@@ -14,12 +14,15 @@ public interface IStorage
     Task<IEnumerable<IEntity>> Load<T>(Expression<Func<T, bool>> predicate) where T : class, IEntity;
 }
 
-public abstract record StorageOperation(IEntity Entity);
+public abstract class StorageOperation(IEntity entity)
+{
+    public IEntity Entity { get; } = entity;
+}
 
-public record StorageInsert(IEntity Entity) : StorageOperation(Entity);
+public class StorageInsert(IEntity entity) : StorageOperation(entity);
 
-public record StorageUpdate(IEntity Entity) : StorageOperation(Entity);
+public class StorageUpdate(IEntity entity) : StorageOperation(entity);
 
-public record StorageDelete(IEntity Entity) : StorageOperation(Entity);
+public class StorageDelete(IEntity entity) : StorageOperation(entity);
 
 

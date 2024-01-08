@@ -13,23 +13,35 @@ namespace ReactorData.Implementation;
 
 class Container : IContainer
 {
-    abstract record Operation();
+    abstract class Operation();
 
-    abstract record OperationPending(IEntity Entity) : Operation;
+    abstract class OperationPending(IEntity entity) : Operation
+    {
+        public IEntity Entity { get; } = entity;
+    }
 
-    record OperationAdd(IEntity Entity) : OperationPending(Entity);
+    class OperationAdd(IEntity entity) : OperationPending(entity);
 
-    record OperationUpdate(IEntity Entity) : OperationPending(Entity);
+    class OperationUpdate(IEntity entity) : OperationPending(entity);
 
-    record OperationRemove(IEntity Entity) : OperationPending(Entity);
+    class OperationRemove(IEntity entity) : OperationPending(entity);
 
-    record OperationAddRange(IEnumerable<IEntity> Entities) : Operation;
+    class OperationAddRange(IEnumerable<IEntity> entities) : Operation
+    {
+        public IEnumerable<IEntity> Entities { get; } = entities;
+    }
 
-    record OperationFetch(Func<IStorage, Task<IEnumerable<IEntity>>> LoadFunction) : Operation;
+    class OperationFetch(Func<IStorage, Task<IEnumerable<IEntity>>> loadFunction) : Operation
+    {
+        public Func<IStorage, Task<IEnumerable<IEntity>>> LoadFunction { get; } = loadFunction;
+    }
 
-    record OperationSave() : Operation;
+    class OperationSave() : Operation;
 
-    record OperationFlush(AsyncAutoResetEvent Signal) : Operation;
+    class OperationFlush(AsyncAutoResetEvent signal) : Operation
+    {
+        public AsyncAutoResetEvent Signal { get; } = signal;
+    }
 
     readonly ConcurrentDictionary<Type, Dictionary<IEntity, bool>> _sets = [];
 
@@ -248,7 +260,7 @@ class Container : IContainer
 
     public async Task Flush()
     {
-        var signalEvent = new AsyncAutoResetEvent(false);
+        var signalEvent = new AsyncAutoResetEvent();
         _operationsBlock.Post(new OperationFlush(signalEvent));
         await signalEvent.WaitAsync();
     }

@@ -3,11 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.9.34310.174
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData", "ReactorData.csproj", "{3406E76E-01DA-4C71-AAAD-A4A17B7DF8B5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData", "ReactorData\ReactorData.csproj", "{3406E76E-01DA-4C71-AAAD-A4A17B7DF8B5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.Tests", "..\ReactorData.Tests\ReactorData.Tests.csproj", "{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.Tests", "ReactorData.Tests\ReactorData.Tests.csproj", "{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.EFCore", "..\ReactorData.EFCore\ReactorData.EFCore.csproj", "{ED666338-0E8F-4B24-856D-08906DDA4B2E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactorData.EFCore.Sqlite", "ReactorData.EFCore.Sqlite\ReactorData.EFCore.Sqlite.csproj", "{FE1887B5-EE50-4302-A42A-997609F89B6E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,10 @@ Global
 		{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}.Release|Any CPU.Build.0 = Release|Any CPU
-		{ED666338-0E8F-4B24-856D-08906DDA4B2E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{ED666338-0E8F-4B24-856D-08906DDA4B2E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{ED666338-0E8F-4B24-856D-08906DDA4B2E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{ED666338-0E8F-4B24-856D-08906DDA4B2E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FE1887B5-EE50-4302-A42A-997609F89B6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FE1887B5-EE50-4302-A42A-997609F89B6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FE1887B5-EE50-4302-A42A-997609F89B6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FE1887B5-EE50-4302-A42A-997609F89B6E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -2,5 +2,5 @@
 
 public interface IEntity
 {
-
+    object? GetKey { get; }
 }

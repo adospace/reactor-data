@@ -2,41 +2,30 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace ReactorData;
 
-internal sealed class AsyncAutoResetEvent(bool signaled)
+internal sealed class AsyncAutoResetEvent
 {
-    private readonly Queue<TaskCompletionSource> _queue = new();
+    private static readonly Task _completed = Task.FromResult(true);
+    private readonly Queue<TaskCompletionSource<bool>> _waits = new Queue<TaskCompletionSource<bool>>();
+    private bool _signaled;
 
-    private bool _signaled = signaled;
-
-    public Task WaitAsync(CancellationToken cancellationToken = default)
+    public Task WaitAsync()
     {
-        lock (_queue)
+        lock (_waits)
         {
             if (_signaled)
             {
                 _signaled = false;
-                return Task.CompletedTask;
+                return _completed;
             }
             else
             {
-                var tcs = new TaskCompletionSource();
-                if (cancellationToken.CanBeCanceled)
-                {
-                    // If the token is cancelled, cancel the waiter.
-                    var registration = cancellationToken.Register(() => tcs.TrySetCanceled(), useSynchronizationContext: false);
-
-                    // If the waiter completes or faults, unregister our interest in cancellation.
-                    tcs.Task.ContinueWith(
-                        _ => registration.Unregister(),
-                        cancellationToken,
-                        TaskContinuationOptions.OnlyOnRanToCompletion | TaskContinuationOptions.NotOnFaulted,
-                        TaskScheduler.Default);
-                }
-                _queue.Enqueue(tcs);
+                var tcs = new TaskCompletionSource<bool>();
+                _waits.Enqueue(tcs);
                 return tcs.Task;
             }
         }
@@ -44,13 +33,13 @@ internal sealed class AsyncAutoResetEvent(bool signaled)
 
     public void Set()
     {
-        TaskCompletionSource? toRelease = null;
+        TaskCompletionSource<bool>? toRelease = null;
 
-        lock (_queue)
+        lock (_waits)
         {
-            if (_queue.Count > 0)
+            if (_waits.Count > 0)
             {
-                toRelease = _queue.Dequeue();
+                toRelease = _waits.Dequeue();
             }
             else if (!_signaled)
             {
@@ -58,7 +47,6 @@ internal sealed class AsyncAutoResetEvent(bool signaled)
             }
         }
 
-        // It's possible that the TCS has already been cancelled.
-        toRelease?.TrySetResult();
+        toRelease?.SetResult(true);
     }
 }

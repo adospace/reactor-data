@@ -1,25 +1,37 @@
-using FluentAssertions;
+﻿using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using ReactorData;
 using ReactorData.Tests.Models;
+using ReactorData.EFCore.Sqlite;
+using Microsoft.Data.Sqlite;
 
 namespace ReactorData.Tests;
 
-public class BasicTests
+class BasicStorageTests
 {
     IServiceProvider _services;
     IContainer _container;
+    SqliteConnection _connection;
 
     [SetUp]
     public void Setup()
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddReactorData();
+        _connection = new SqliteConnection("Filename=:memory:");
+        _connection.Open();
+        serviceCollection.AddReactorData<TestDbContext>(options => options.UseSqlite(_connection));
+
         _services = serviceCollection.BuildServiceProvider();
 
         _container = _services.GetRequiredService<IContainer>();
     }
 
+
+    [TearDown]
+    public void TearDown()
+    {
+
+    }
 
     [Test]
     public async Task BasicOperationsOnEntity()
@@ -60,8 +72,8 @@ public class BasicTests
 
         await _container.Flush();
 
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Deleted); 
-        
+        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Deleted);
+
         _container.Save();
 
         await _container.Flush();
