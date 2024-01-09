@@ -1,0 +1,40 @@
+
+name: ReactorData
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: windows-latest  # For a list of available runner types, refer to
+                             # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on
+
+    env:
+      Solution_Name: ./src/ReactorData.sln
+      Version: 1.0.0-beta
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        
+    # Install the .NET Core workload
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 8.0.x
+      
+    - name: Build the packages
+      run: dotnet build $env:Solution_Name -c Release /p:Version=$env:Version
+      
+    - name: Test the solution
+      run: dotnet test $env:Solution_Name
+
+    - name: Push Package to NuGet.org
+      run: dotnet nuget push **/*.nupkg -k ${{ secrets.NUGETAPIKEY }} -s https://api.nuget.org/v3/index.json --skip-duplicate
+
+      
