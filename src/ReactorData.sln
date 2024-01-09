@@ -11,7 +11,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.EFCore", "React
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.Sqlite", "ReactorData.Sqlite\ReactorData.Sqlite.csproj", "{9E3E4008-BBFB-400F-B86D-FCE47D854B8A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactorData.SourceGenerators", "ReactorData.SourceGenerators\ReactorData.SourceGenerators.csproj", "{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.SourceGenerators", "ReactorData.SourceGenerators\ReactorData.SourceGenerators.csproj", "{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{2699D336-51FF-403E-B688-B3777E55DA21}"
+	ProjectSection(SolutionItems) = preProject
+		..\.github\workflows\build-deploy.yml = ..\.github\workflows\build-deploy.yml
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
