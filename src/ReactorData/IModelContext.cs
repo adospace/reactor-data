@@ -18,6 +18,8 @@ public interface IModelContext
 
     void Save();
 
+    T? FindByKey<T>(object key) where T : class, IEntity;
+
     IEnumerable<T> Set<T>() where T : class, IEntity;
 
     Task Flush();

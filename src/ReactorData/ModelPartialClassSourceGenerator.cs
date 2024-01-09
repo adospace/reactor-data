@@ -18,23 +18,23 @@ public class ModelPartialClassSourceGenerator : ISourceGenerator
 
     public void Initialize(GeneratorInitializationContext context)
     {
-        context.RegisterForPostInitialization((i) => i.AddSource("ModelAttribute.g.cs", @"using System;
+//        context.RegisterForPostInitialization((i) => i.AddSource("ModelAttribute.g.cs", @"using System;
 
-#nullable enable
-namespace ReactorData
-{
-    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    class ModelAttribute : Attribute
-    {
-    }
+//#nullable enable
+//namespace ReactorData
+//{
+//    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+//    class ModelAttribute : Attribute
+//    {
+//    }
 
 
-    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-    class ModelKeyAttribute : Attribute
-    {
-    }
-}
-"));
+//    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
+//    class ModelKeyAttribute : Attribute
+//    {
+//    }
+//}
+//"));
 
         context.RegisterForSyntaxNotifications(() => new ModelPartialClassSyntaxReceiver());
     }
@@ -72,8 +72,7 @@ namespace ReactorData
             var idProperty = classTypeSymbol.GetMembers()
                 .OfType<IPropertySymbol>() // Filter members to only include properties
                 .FirstOrDefault(prop =>
-                    (prop.DeclaredAccessibility == Accessibility.Public || prop.DeclaredAccessibility == Accessibility.Private) // Check for public or private
-                    && HasAttribute(prop, "ModelKeyAttribute")); // Check if the property has the specific attribute
+                    HasAttribute(prop, "KeyAttribute"));
 
             idProperty ??= classTypeSymbol.GetMembers()
                     .OfType<IPropertySymbol>() // Filter members to only include properties
@@ -119,128 +118,6 @@ namespace ReactorData
 
             context.AddSource($"{fullyQualifiedTypeName}.g.cs", generatedSource);
         }
-
-
-        //// Format it to get the fully qualified name (namespace + type name).
-        //SymbolDisplayFormat qualifiedFormat = new SymbolDisplayFormat(
-        //    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces
-        //);
-        //SymbolDisplayFormat symbolDisplayFormat = new SymbolDisplayFormat(
-        //    typeQualificationStyle: SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-        //    genericsOptions: SymbolDisplayGenericsOptions.IncludeTypeParameters,
-        //    miscellaneousOptions: SymbolDisplayMiscellaneousOptions.UseSpecialTypes | SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
-        //);
-
-        //Dictionary<string, GeneratorClassItem> generatingClassItems = new();
-
-        //void generateClassItem(FieldDeclarationSyntax fieldDeclaration, FieldAttributeType attributeType)
-        //{
-        //    // Get the semantic model for the syntax tree that has your field.
-        //    var semanticModel = context.Compilation.GetSemanticModel(fieldDeclaration.SyntaxTree);
-
-        //    // Get the TypeSyntax from the FieldDeclarationSyntax.
-        //    TypeSyntax typeSyntax = fieldDeclaration.Declaration.Type;
-
-        //    // Check if it is a nullable value type.
-        //    bool isNullableValueType = typeSyntax is NullableTypeSyntax;
-
-        //    // Get the type symbol using the semantic model.
-        //    var fieldTypeSymbol = semanticModel.GetTypeInfo(typeSyntax).Type;
-
-        //    if (fieldTypeSymbol == null)
-        //    {
-        //        return;
-        //    }
-
-        //    // Start with the fully qualified name of the type.
-        //    string fieldTypeFullyQualifiedName = fieldTypeSymbol.ToDisplayString(symbolDisplayFormat);
-
-        //    // Append "?" if it's a nullable value type or if the nullable annotation is set for reference types.
-        //    if ((isNullableValueType || fieldTypeSymbol.NullableAnnotation == NullableAnnotation.Annotated) &&
-        //        !fieldTypeFullyQualifiedName.EndsWith("?"))
-        //    {
-        //        fieldTypeFullyQualifiedName += "?";
-        //    }
-
-        //    if (fieldDeclaration.Declaration.Variables.Count != 1)
-        //    {
-        //        return;
-        //    }
-
-        //    var typeDeclarationSyntax = fieldDeclaration.Ancestors()
-        //                        .OfType<TypeDeclarationSyntax>()
-        //                        .FirstOrDefault();
-
-        //    if (typeDeclarationSyntax == null)
-        //    {
-        //        return;
-        //    }
-
-        //    // Get the type symbol for the containing type.
-        //    var classTypeSymbol = semanticModel.GetDeclaredSymbol(typeDeclarationSyntax);
-
-        //    if (classTypeSymbol == null)
-        //    {
-        //        return;
-        //    }
-
-        //    string fullyQualifiedTypeName = classTypeSymbol.ToDisplayString(qualifiedFormat);
-        //    string namespaceName = classTypeSymbol.ContainingNamespace.ToDisplayString();
-        //    string className = classTypeSymbol.Name;
-
-        //    if (!generatingClassItems.TryGetValue(fullyQualifiedTypeName, out var generatingClassItem))
-        //    {
-        //        generatingClassItems[fullyQualifiedTypeName] = generatingClassItem = new GeneratorClassItem(namespaceName, className);
-        //    }
-
-        //    foreach (var variableFieldSyntax in fieldDeclaration.Declaration.Variables)
-        //    {
-        //        var variableFieldName = variableFieldSyntax.Identifier.ValueText;
-
-        //        if (generatingClassItem.FieldItems.ContainsKey(variableFieldName))
-        //        {
-        //            return;
-        //        }
-
-        //        string? methodName = null;
-        //        if (attributeType == FieldAttributeType.Prop)
-        //        {
-        //            if (semanticModel.GetDeclaredSymbol(variableFieldSyntax) 
-        //                is IFieldSymbol variableDeclaratorFieldSymbol)
-        //            {
-        //                var propAttributeData = variableDeclaratorFieldSymbol.GetAttributes()
-        //                    .FirstOrDefault(_ => _.AttributeClass?.Name == "PropAttribute" || _.AttributeClass?.Name == "Prop");
-
-        //                if (propAttributeData?.ConstructorArguments.Length > 0)
-        //                {
-        //                    methodName = propAttributeData.ConstructorArguments[0].Value?.ToString();
-        //                }
-        //            }
-        //        }
-
-        //        generatingClassItem.FieldItems[variableFieldName]
-        //            = new GeneratorFieldItem(variableFieldName, fieldTypeFullyQualifiedName, attributeType, methodName);
-        //    }
-        //}
-
-        //foreach (var injectFieldToGenerate in ((ModelPartialClassSyntaxReceiver)context.SyntaxReceiver.EnsureNotNull()).InjectFieldsToGenerate)
-        //{
-        //    generateClassItem(injectFieldToGenerate, FieldAttributeType.Inject);
-        //}
-
-        //foreach (var propFieldToGenerate in ((ModelPartialClassSyntaxReceiver)context.SyntaxReceiver.EnsureNotNull()).PropFieldsToGenerate)
-        //{
-        //    generateClassItem(propFieldToGenerate, FieldAttributeType.Prop);
-        //}
-
-        //foreach (var generatingClassItem in generatingClassItems.OrderBy(_=>_.Key)) 
-        //{
-        //    var textGenerator = new ComponentPartialClassGenerator(generatingClassItem.Value);
-
-        //    var source = textGenerator.TransformAndPrettify();
-
-        //    context.AddSource($"{generatingClassItem.Value.ClassName}.g.cs", source);
-        //}   
     }
 }
 

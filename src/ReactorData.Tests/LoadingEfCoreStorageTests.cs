@@ -8,7 +8,7 @@ using System.Collections.Specialized;
 
 namespace ReactorData.Tests;
 
-class LoadingTests
+class LoadingEfCoreStorageTests
 {
     IServiceProvider _services;
     IModelContext _container;
@@ -20,7 +20,7 @@ class LoadingTests
         var serviceCollection = new ServiceCollection();
         _connection = new SqliteConnection("Filename=:memory:");
         _connection.Open();
-        serviceCollection.AddReactorData<TestDbContext>(options => options.UseSqlite(_connection));
+        serviceCollection.AddReactorDataWithEfCore<TestDbContext>(options => options.UseSqlite(_connection));
 
         _services = serviceCollection.BuildServiceProvider();
 
@@ -31,11 +31,11 @@ class LoadingTests
     [TearDown]
     public void TearDown()
     {
-
+        _connection.Dispose();
     }
 
     [Test]
-    public async Task TestContextLoading()
+    public async Task TestContextLoadingUsingEfCoreStorage()
     {
         _container.Load<Blog>(query => query.Where(_ => _.Title.StartsWith("Stored")));
 
@@ -140,5 +140,7 @@ class LoadingTests
 
             query.CollectionChanged -= checkUpdatedEvent;
         }
+
+        _container.FindByKey<Blog>(1).Should().NotBeNull();
     }
 }

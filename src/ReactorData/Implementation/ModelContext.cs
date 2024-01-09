@@ -385,6 +385,19 @@ class ModelContext : IModelContext
         return query;
     }
 
+    public T? FindByKey<T>(object key) where T : class, IEntity
+    {
+        var typeofT = typeof(T);
+        var set = _sets.GetOrAdd(typeofT, []);
+
+        if (set.TryGetValue(key, out var entity))
+        {
+            return (T)entity;
+        }
+
+        return default;
+    }
+
     private void NotifyChanges(Type typeOfEntity, params IEntity[] changedEntities)
     {
         var queries = _queries.GetOrAdd(typeOfEntity, []);

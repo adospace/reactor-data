@@ -5,32 +5,40 @@ using ReactorData.Tests.Models;
 using ReactorData.EFCore;
 using System.Collections.Specialized;
 using Microsoft.EntityFrameworkCore;
+using ReactorData.Sqlite;
 
 namespace ReactorData.Tests;
 
-class QueryStorageTests
+class QuerySqliteStorageTests
 {
     IServiceProvider _services;
     IModelContext _container;
-    SqliteConnection _connection;
+    private SqliteConnection _connection;
 
     [SetUp]
     public void Setup()
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddReactorData();
-
         _connection = new SqliteConnection("Filename=:memory:");
         _connection.Open();
 
-        serviceCollection.AddReactorData<TestDbContext>(options => options.UseSqlite(_connection));
+        serviceCollection.AddReactorDataWithSqlite(_connection,
+            configuration => configuration.Model<Blog>());
 
         _services = serviceCollection.BuildServiceProvider();
+
         _container = _services.GetRequiredService<IModelContext>();
     }
 
+
+    [TearDown]
+    public void TearDown()
+    {
+        _connection.Dispose();
+    }
+
     [Test]
-    public async Task TestQueryFunctions()
+    public async Task TestQueryFunctionsUsingSqliteStorage()
     {
         var firstBlog = new Blog { Title = "My new blog" };
 

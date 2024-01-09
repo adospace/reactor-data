@@ -5,7 +5,7 @@ namespace ReactorData.EFCore;
 
 public static class ServiceCollectionExtensions
 {
-    public static void AddReactorData<T>(this IServiceCollection services, Action<DbContextOptionsBuilder>? optionsAction = null) where T : DbContext
+    public static void AddReactorDataWithEfCore<T>(this IServiceCollection services, Action<DbContextOptionsBuilder>? optionsAction = null) where T : DbContext
     {
         services.AddReactorData();
         services.AddDbContext<T>(optionsAction);

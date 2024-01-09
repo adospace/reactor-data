@@ -1,17 +1,16 @@
 ﻿using FluentAssertions;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ReactorData.Tests.Models;
-using ReactorData.EFCore;
+using ReactorData.Sqlite;
 using Microsoft.Data.Sqlite;
 
 namespace ReactorData.Tests;
 
-class BasicStorageTests
+class BasicSqliteStorageTests
 {
     IServiceProvider _services;
     IModelContext _container;
-    SqliteConnection _connection;
+    private SqliteConnection _connection;
 
     [SetUp]
     public void Setup()
@@ -19,7 +18,9 @@ class BasicStorageTests
         var serviceCollection = new ServiceCollection();
         _connection = new SqliteConnection("Filename=:memory:");
         _connection.Open();
-        serviceCollection.AddReactorData<TestDbContext>(options => options.UseSqlite(_connection));
+
+        serviceCollection.AddReactorDataWithSqlite(_connection, 
+            configuration => configuration.Model<Blog>());
 
         _services = serviceCollection.BuildServiceProvider();
 
@@ -30,11 +31,11 @@ class BasicStorageTests
     [TearDown]
     public void TearDown()
     {
-
+        _connection.Dispose();
     }
 
     [Test]
-    public async Task BasicOperationsOnEntity()
+    public async Task BasicOperationsOnEntityUsingSqliteStorage()
     {
         var blog = new Blog { Title = "My new blog" };
 

@@ -1,9 +1,11 @@
-﻿namespace ReactorData.Tests.Models;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace ReactorData.Tests.Models;
 
 [Model]
 partial class Todo
 {
-    [ModelKey]
+    [Key]
     public required string Title { get; set; }
 
     public bool Done {  get; set; }
