@@ -29,7 +29,7 @@ namespace ReactorData
     }
 
 
-    [AttributeUsage(AttributeTargets.Property)]
+    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
     class ModelKeyAttribute : Attribute
     {
     }
@@ -46,19 +46,62 @@ namespace ReactorData
         );
 
         var receiver = (ModelPartialClassSyntaxReceiver)context.SyntaxReceiver.EnsureNotNull();
-        
+
+        bool HasAttribute(ISymbol symbol, string attributeName)
+        {
+            // This check assumes that the provided attributeName is either the full name (including namespace)
+            // or the metadata name (without "Attribute" suffix), and that you're interested in exact matches only.
+            return symbol.GetAttributes().Any(attr =>
+                attr.AttributeClass?.Name == attributeName
+                || attr.AttributeClass?.ToDisplayString() == attributeName);
+        }
+
         foreach (var modelToGenerate in receiver.ModelsToGenerate)
         {
             var semanticModel = context.Compilation.GetSemanticModel(modelToGenerate.SyntaxTree);
 
             // Get the class symbol from the semantic model
-            var classTypeSymbol = (INamedTypeSymbol)semanticModel.GetDeclaredSymbol(modelToGenerate).EnsureNotNull();
+            var classTypeSymbol = semanticModel.GetDeclaredSymbol(modelToGenerate).EnsureNotNull();
 
             string fullyQualifiedTypeName = classTypeSymbol.ToDisplayString(qualifiedFormat);
             string namespaceName = classTypeSymbol.ContainingNamespace.ToDisplayString();
             string className = classTypeSymbol.Name;
 
-            string idPropertyName = "Id";
+
+            // Loop through all the properties of the class
+            var idProperty = classTypeSymbol.GetMembers()
+                .OfType<IPropertySymbol>() // Filter members to only include properties
+                .FirstOrDefault(prop =>
+                    (prop.DeclaredAccessibility == Accessibility.Public || prop.DeclaredAccessibility == Accessibility.Private) // Check for public or private
+                    && HasAttribute(prop, "ModelKeyAttribute")); // Check if the property has the specific attribute
+
+            idProperty ??= classTypeSymbol.GetMembers()
+                    .OfType<IPropertySymbol>() // Filter members to only include properties
+                        .FirstOrDefault(prop => prop.Name == "Id");
+
+            idProperty ??= classTypeSymbol.GetMembers()
+                    .OfType<IPropertySymbol>() // Filter members to only include properties
+                        .FirstOrDefault(prop => prop.Name == "Key");
+
+            if (idProperty == null)
+            {
+                var diagnosticDescriptor = new DiagnosticDescriptor(
+                    id: "REACTOR_DATA_001", // Unique ID for your diagnostic
+                    title: $"Model '{fullyQualifiedTypeName}' without key property",
+                    messageFormat: "Unable to generate model entity: {0} (Looking for a property named 'Id', 'Key' or with [ModelKey] attribute)", // {0} will be replaced with 'messageArgs'
+                    category: "ReactorData Model Attribute",
+                    defaultSeverity: DiagnosticSeverity.Warning, // Choose the appropriate severity
+                    isEnabledByDefault: true
+                );
+
+                // You can now emit the diagnostic with this descriptor and message arguments for the message format.
+                var diagnostic = Diagnostic.Create(diagnosticDescriptor, Location.None, fullyQualifiedTypeName);
+                context.ReportDiagnostic(diagnostic);
+
+                continue;
+            }
+
+            string idPropertyName = idProperty.Name;
 
             string generatedSource = $$"""
                 using System;
@@ -69,12 +112,12 @@ namespace ReactorData
                 {
                     partial class {{className}} : IEntity
                     {
-                        object? IEntity.GetKey => {{idPropertyName}} == default ? null : {{idPropertyName}};
+                        object? IEntity.GetKey() => {{idPropertyName}} == default ? null : {{idPropertyName}};
                     }
                 }
                 """;
 
-            context.AddSource($"{className}.g.cs", generatedSource);
+            context.AddSource($"{fullyQualifiedTypeName}.g.cs", generatedSource);
         }
 
 

@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 using static System.Collections.Specialized.BitVector32;
@@ -13,6 +14,7 @@ namespace ReactorData.Implementation;
 
 class Container : IContainer
 {
+    #region Operations
     abstract class Operation();
 
     abstract class OperationPending(IEntity entity) : Operation
@@ -42,17 +44,22 @@ class Container : IContainer
     {
         public AsyncAutoResetEvent Signal { get; } = signal;
     }
+    #endregion
 
-    readonly ConcurrentDictionary<Type, Dictionary<IEntity, bool>> _sets = [];
+    private readonly ConcurrentDictionary<Type, Dictionary<object, IEntity>> _sets = [];
 
-    readonly List<OperationPending> _pendingQueue = [];
-    readonly ConcurrentDictionary<IEntity, bool> _pendingInserts = [];
-    readonly ConcurrentDictionary<IEntity, bool> _pendingUpdates = [];
-    readonly ConcurrentDictionary<IEntity, bool> _pendingDeletes = [];
+    private readonly List<OperationPending> _pendingQueue = [];
+    private readonly ConcurrentDictionary<IEntity, bool> _pendingInserts = [];
+    private readonly ConcurrentDictionary<object, IEntity> _pendingUpdates = [];
+    private readonly ConcurrentDictionary<object, IEntity> _pendingDeletes = [];
 
-    readonly ActionBlock<Operation> _operationsBlock;
+    private readonly ActionBlock<Operation> _operationsBlock;
 
     private readonly IStorage? _storage;
+
+    private readonly ConcurrentDictionary<Type, List<WeakReference<Query>>> _queries = [];
+
+    private readonly SemaphoreSlim _notificationSemaphore = new(1);
 
     public Container(IServiceProvider serviceProvider)
     {
@@ -60,25 +67,33 @@ class Container : IContainer
         _storage = serviceProvider.GetService<IStorage>();
     }
 
+    public Action<Exception>? OnError { get; set; }
+
     public EntityStatus GetEntityStatus(IEntity entity)
     {
         if (_pendingInserts.TryGetValue(entity, out var _))
         {
             return EntityStatus.Added;
         }
-        if (_pendingUpdates.TryGetValue(entity, out var _))
-        {
-            return EntityStatus.Updated;
-        }
-        if (_pendingDeletes.TryGetValue(entity, out var _))
-        {
-            return EntityStatus.Deleted;
-        }
+        
+        var key = entity.GetKey();
 
-        var set = _sets.GetOrAdd(entity.GetType(), []);
-        if (set.TryGetValue(entity, out var _))
+        if (key != null)
         {
-            return EntityStatus.Attached;
+            if (_pendingUpdates.TryGetValue(key, out var _))
+            {
+                return EntityStatus.Updated;
+            }
+            if (_pendingDeletes.TryGetValue(key, out var _))
+            {
+                return EntityStatus.Deleted;
+            }
+
+            var set = _sets.GetOrAdd(entity.GetType(), []);
+            if (set.TryGetValue(key, out var _))
+            {
+                return EntityStatus.Attached;
+            }
         }
 
         return EntityStatus.Detached;
@@ -86,124 +101,193 @@ class Container : IContainer
 
     private async Task DoWork(Operation operation)
     {
+        try
+        {
+            await InternalDoWork(operation);
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                OnError?.Invoke(ex);
+            }
+            catch { }
+        }
+    }
+
+    private async Task InternalDoWork(Operation operation)
+    {
         switch (operation)
         {
             case OperationAdd operationAdd:
-                if (_pendingDeletes.TryRemove(operationAdd.Entity, out _) ||
-                    _pendingUpdates.TryGetValue(operationAdd.Entity, out _))
-                {
-                    _pendingQueue.RemoveFirst(_ => _.Entity == operationAdd.Entity);
-                }
+                //if (_pendingDeletes.TryRemove(operationAdd.Entity, out _) ||
+                //    _pendingUpdates.TryGetValue(operationAdd.Entity, out _))
+                //{
+                //    _pendingQueue.RemoveFirst(_ => _.Entity == operationAdd.Entity);
+                //}
 
                 if (_pendingInserts.TryAdd(operationAdd.Entity, true))
                 {
                     _pendingQueue.Add(operationAdd);
+
+                    NotifyChanges(operationAdd.Entity.GetType());
                 }
                 break;
             case OperationUpdate operationUpdate:
-                if (_pendingInserts.TryGetValue(operationUpdate.Entity, out _))
                 {
-                    break;
-                }
+                    //if (_pendingInserts.TryGetValue(operationUpdate.Entity, out _))
+                    //{
+                    //    break;
+                    //}
+                    var entityKey = operationUpdate.Entity.GetKey().EnsureNotNull();
 
-                if (_pendingDeletes.TryRemove(operationUpdate.Entity, out _))
-                {
-                    _pendingQueue.RemoveFirst(_ => _.Entity == operationUpdate.Entity);
-                }
+                    if (_pendingDeletes.TryRemove(entityKey, out _))
+                    {
+                        _pendingQueue.RemoveFirst(_ => _.Entity == operationUpdate.Entity);
+                        NotifyChanges(operationUpdate.Entity.GetType());
+                    }
 
-                if (_pendingUpdates.TryAdd(operationUpdate.Entity, true))
-                {
-                    _pendingQueue.Add(operationUpdate);
+                    if (_pendingUpdates.TryAdd(entityKey, operationUpdate.Entity))
+                    {
+                        _pendingQueue.Add(operationUpdate);
+                        NotifyChanges(operationUpdate.Entity.GetType());
+                    }
                 }
-
                 break;
             case OperationRemove operationRemove:
-                if (_pendingInserts.TryRemove(operationRemove.Entity, out _) ||
-                    _pendingUpdates.TryGetValue(operationRemove.Entity, out _))
                 {
-                    _pendingQueue.RemoveFirst(_ => _.Entity == operationRemove.Entity);
-                }
+                    var entityKey = operationRemove.Entity.GetKey().EnsureNotNull();
+                    if (_pendingUpdates.TryGetValue(entityKey, out _))
+                    {
+                        _pendingQueue.RemoveFirst(_ => _.Entity == operationRemove.Entity);
+                    }
 
-                if (_pendingDeletes.TryAdd(operationRemove.Entity, true))
-                {
-                    _pendingQueue.Add(operationRemove);
+                    if (_pendingDeletes.TryAdd(entityKey, operationRemove.Entity))
+                    {
+                        _pendingQueue.Add(operationRemove);
+                        NotifyChanges(operationRemove.Entity.GetType());
+                    }
                 }
                 break;
             case OperationAddRange operationAddRange:
-                foreach(var entity in operationAddRange.Entities)
                 {
-                    if (_pendingDeletes.TryRemove(entity, out _) ||
-                        _pendingUpdates.TryGetValue(entity, out _))
+                    HashSet<Type> queryTypesToNofity = [];
+
+                    foreach (var entity in operationAddRange.Entities)
                     {
-                        _pendingQueue.RemoveFirst(_ => _.Entity == entity);
+                        //if (_pendingDeletes.TryRemove(entity, out _) ||
+                        //    _pendingUpdates.TryGetValue(entity, out _))
+                        //{
+                        //    _pendingQueue.RemoveFirst(_ => _.Entity == entity);
+                        //}
+
+                        if (_pendingInserts.TryAdd(entity, true))
+                        {
+                            _pendingQueue.Add(new OperationAdd(entity));
+
+                            if (!queryTypesToNofity.Contains(entity.GetType()))
+                            {
+                                queryTypesToNofity.Add(entity.GetType());
+                            }
+                        }
                     }
 
-                    if (_pendingInserts.TryAdd(entity, true))
+                    foreach (var queryTypeToNofity in queryTypesToNofity)
                     {
-                        _pendingQueue.Add(new OperationAdd(entity));
+                        NotifyChanges(queryTypeToNofity);
                     }
                 }
+
                 break;
             case OperationFetch operationFetch:
                 if (_storage != null)
                 {
                     var entities = await operationFetch.LoadFunction(_storage);
+                    HashSet<Type> queryTypesToNofity = [];
+
                     foreach (var entity in entities)
                     {
-                        var set = _sets.GetOrAdd(entity.GetType(), []);
-                        set.Add(entity, true);
+                        var entityType = entity.GetType();
+                        var set = _sets.GetOrAdd(entityType, []);
+                        set.Add(entity.GetKey().EnsureNotNull(), entity);
+
+                        if (!queryTypesToNofity.Contains(entityType))
+                        {
+                            queryTypesToNofity.Add(entityType);
+                        }
+                    }
+
+                    foreach (var queryTypeToNofity in queryTypesToNofity)
+                    {
+                        NotifyChanges(queryTypeToNofity);
                     }
                 }
                 break;
-
             case OperationSave operationSave:
-                if (_storage != null)
                 {
-                    var listOfStorageOperation = new List<StorageOperation>();
+                    if (_storage != null)
+                    {
+                        var listOfStorageOperation = new List<StorageOperation>();
+                        foreach (var pendingOperation in _pendingQueue)
+                        {
+                            switch (pendingOperation)
+                            {
+                                case OperationAdd operationAdd:
+                                    listOfStorageOperation.Add(new StorageInsert(operationAdd.Entity));
+                                    break;
+                                case OperationUpdate operationUpdate:
+                                    listOfStorageOperation.Add(new StorageUpdate(operationUpdate.Entity));
+                                    break;
+                                case OperationRemove operationRemove:
+                                    listOfStorageOperation.Add(new StorageDelete(operationRemove.Entity));
+                                    break;
+                            }
+                        }
+
+                        await _storage.Save(listOfStorageOperation);
+                    }
+
+                    HashSet<Type> queryTypesToNofity = [];
                     foreach (var pendingOperation in _pendingQueue)
                     {
                         switch (pendingOperation)
                         {
                             case OperationAdd operationAdd:
-                                listOfStorageOperation.Add(new StorageInsert(operationAdd.Entity));
+                                {
+                                    var set = _sets.GetOrAdd(operationAdd.Entity.GetType(), []);
+                                    set.Add(operationAdd.Entity.GetKey().EnsureNotNull(), operationAdd.Entity);
+                                    if (!queryTypesToNofity.Contains(operationAdd.Entity.GetType()))
+                                    {
+                                        queryTypesToNofity.Add(operationAdd.Entity.GetType());
+                                    }
+                                }
                                 break;
                             case OperationUpdate operationUpdate:
-                                listOfStorageOperation.Add(new StorageUpdate(operationUpdate.Entity));
                                 break;
                             case OperationRemove operationRemove:
-                                listOfStorageOperation.Add(new StorageDelete(operationRemove.Entity));
+                                {
+                                    var set = _sets.GetOrAdd(operationRemove.Entity.GetType(), []);
+                                    set.Remove(operationRemove.Entity.GetKey().EnsureNotNull());
+
+                                    if (!queryTypesToNofity.Contains(operationRemove.Entity.GetType()))
+                                    {
+                                        queryTypesToNofity.Add(operationRemove.Entity.GetType());
+                                    }
+                                }
                                 break;
                         }
                     }
 
-                    await _storage.Save(listOfStorageOperation);
-                }
+                    _pendingQueue.Clear();
+                    _pendingInserts.Clear();
+                    _pendingUpdates.Clear();
+                    _pendingDeletes.Clear();
 
-                foreach (var pendingOperation in _pendingQueue)
-                {
-                    switch (pendingOperation)
+                    foreach (var queryTypeToNofity in queryTypesToNofity)
                     {
-                        case OperationAdd operationAdd:
-                            {
-                                var set = _sets.GetOrAdd(operationAdd.Entity.GetType(), []);
-                                set.Add(operationAdd.Entity, true);
-                            }
-                            break;
-                        case OperationUpdate operationUpdate:
-                            break;
-                        case OperationRemove operationRemove:
-                            {
-                                var set = _sets.GetOrAdd(operationRemove.Entity.GetType(), []);
-                                set.Remove(operationRemove.Entity);
-                            }
-                            break;
+                        NotifyChanges(queryTypeToNofity);
                     }
                 }
-
-                _pendingQueue.Clear();
-                _pendingInserts.Clear();
-                _pendingUpdates.Clear();
-                _pendingDeletes.Clear();
                 break;
 
             case OperationFlush operationFlush:
@@ -224,15 +308,25 @@ class Container : IContainer
 
     public void Update(IEntity entity)
     {
+        if (entity.GetKey() == null)
+        {
+            throw new InvalidOperationException("Updating entity with uninitialized key");
+        }
+
         _operationsBlock.Post(new OperationUpdate(entity));
     }
 
     public void Delete(IEntity entity)
     {
+        if (entity.GetKey() == null)
+        {
+            throw new InvalidOperationException("Deleting entity with uninitialized key");
+        }
+
         _operationsBlock.Post(new OperationRemove(entity));
     }
 
-    public void Fetch<T>(Expression<Func<T, bool>> predicate) where T : class, IEntity
+    public void Load<T>(Expression<Func<T, bool>> predicate) where T : class, IEntity
     {
         _operationsBlock.Post(new OperationFetch(storage => storage.Load(predicate)));
     }
@@ -242,7 +336,7 @@ class Container : IContainer
         _operationsBlock.Post(new OperationSave());
     }
 
-    public IEnumerable<T> Set<T>()
+    public IEnumerable<T> Set<T>() where T : class, IEntity
     {
         var typeofT = typeof(T);
         var set = _sets.GetOrAdd(typeofT, []);
@@ -263,5 +357,55 @@ class Container : IContainer
         var signalEvent = new AsyncAutoResetEvent();
         _operationsBlock.Post(new OperationFlush(signalEvent));
         await signalEvent.WaitAsync();
+    }
+
+    public IQuery<T> Query<T>(Expression<Func<T, bool>>? predicateExpression = null, Expression<Func<T, object>>? sortFuncExpression = null) where T : class, IEntity
+    {
+        var predicate = predicateExpression?.Compile();
+        var sortFunction = sortFuncExpression?.Compile();
+
+        var typeofT = typeof(T);
+        var queries = _queries.GetOrAdd(typeofT, []);
+
+        var query = new Query<T>(this, predicate, sortFunction);
+        queries.Add(new WeakReference<Query>(query));
+        
+        return query;
+    }
+
+    private void NotifyChanges(Type typeOfEntity)
+    {
+        var queries = _queries.GetOrAdd(typeOfEntity, []);
+
+        try
+        {
+            _notificationSemaphore.Wait();
+            List<WeakReference<Query>>? referencesToRemove = null;
+            foreach (var queryReference in queries)
+            {
+                if (queryReference.TryGetTarget(out var query))
+                {
+                    query.NotifyChanges();
+                }
+                else
+                {
+                    referencesToRemove ??= [];
+                    referencesToRemove.Add(queryReference);
+                }
+            }
+
+            if (referencesToRemove?.Count > 0)
+            {
+                foreach (var queryReference in referencesToRemove)
+                {
+                    queries.Remove(queryReference);
+                }
+            }
+        }
+        finally
+        {
+            _notificationSemaphore.Release();
+        }
+
     }
 }

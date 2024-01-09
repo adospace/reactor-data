@@ -1,0 +1,11 @@
+{
+  "profiles": {
+    "ReactorData": {
+      "commandName": "Project"
+    },
+    "Profile 1": {
+      "commandName": "DebugRoslynComponent",
+      "targetProject": "..\\ReactorData.Tests\\ReactorData.Tests.csproj"
+    }
+  }
+}

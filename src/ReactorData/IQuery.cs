@@ -1,21 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace ReactorData;
 
-public interface IQuery
+public interface IQuery<T> : IReadOnlyList<T>, INotifyCollectionChanged, INotifyPropertyChanged where T : class, IEntity
 {
-    void Listen(Action<EntityChangeSet> callback);
+
 }
-
-public interface IQueryListener
-{
-    void NotifyQueryChanges(IQuery query, EntityChangeSet callback);
-}
-
-
-public record EntityChangeSet();
 

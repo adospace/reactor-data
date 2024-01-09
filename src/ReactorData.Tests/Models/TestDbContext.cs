@@ -7,14 +7,6 @@ using System.Threading.Tasks;
 
 namespace ReactorData.Tests.Models;
 
-[Model]
-partial class Blog
-{
-    public int Id { get; set; }
-
-    public required string Title { get; set; }
-}
-
 class TestDbContext : DbContext
 {
     public DbSet<Blog> Blogs => Set<Blog>();

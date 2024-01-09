@@ -24,48 +24,51 @@ public class BasicTests
     [Test]
     public async Task BasicOperationsOnEntity()
     {
-        var blog = new Blog { Title = "My new blog" };
+        var todo = new Todo
+        {
+            Title = "My new blog"
+        };
 
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Detached);
+        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Detached);
 
-        _container.Add(blog);
+        _container.Add(todo);
 
         await _container.Flush();
 
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Added);
+        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Added);
 
-        _container.Set<Blog>().Single().Should().BeSameAs(blog);
+        _container.Set<Todo>().Single().Should().BeSameAs(todo);
 
         _container.Save();
 
         await _container.Flush();
 
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Attached);
+        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Attached);
 
-        blog.Title = "My new blog modified";
+        todo.Done = true;
 
-        _container.Update(blog);
+        _container.Update(todo);
 
         await _container.Flush();
 
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Updated);
+        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Updated);
 
         _container.Save();
 
         await _container.Flush();
 
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Attached);
+        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Attached);
 
-        _container.Delete(blog);
+        _container.Delete(todo);
 
         await _container.Flush();
 
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Deleted); 
-        
+        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Deleted);
+
         _container.Save();
 
         await _container.Flush();
 
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Detached);
+        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Detached);
     }
 }
