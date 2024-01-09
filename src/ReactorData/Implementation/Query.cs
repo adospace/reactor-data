@@ -12,13 +12,13 @@ namespace ReactorData.Implementation;
 
 abstract class Query
 {
-    public abstract void NotifyChanges();
+    public abstract void NotifyChanges(IEntity[]? changedEntities);
 }
 
 class Query<T> : Query, IQuery<T> where T : class, IEntity
 {
-    private readonly ObservableCollection<T> _collection = [];
-    private readonly Container _container;
+    private readonly ObservableCollection<T> _collection;
+    private readonly ModelContext _container;
     private readonly Func<T, bool>? _predicate;
     private readonly Func<T, object>? _sortFunc;
 
@@ -38,13 +38,16 @@ class Query<T> : Query, IQuery<T> where T : class, IEntity
     //    }
     //}
 
-    public Query(Container container, Func<T, bool>? predicate = null, Func<T, object>? sortFunc = null)
+    public Query(ModelContext container, Func<T, bool>? predicate = null, Func<T, object>? sortFunc = null)
     {
-        _collection.CollectionChanged += InternalCollectionChanged;
-        ((INotifyPropertyChanged)_collection).PropertyChanged += InternalPropertyChanged;
         _container = container;
         _predicate = predicate;
         _sortFunc = sortFunc;
+
+        _collection = new ObservableCollection<T>(GetContainerList());
+        
+        _collection.CollectionChanged += InternalCollectionChanged;
+        ((INotifyPropertyChanged)_collection).PropertyChanged += InternalPropertyChanged;
     }
 
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
@@ -55,34 +58,10 @@ class Query<T> : Query, IQuery<T> where T : class, IEntity
 
     public T this[int index] => _collection[index];
 
-    private void InternalCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    public override void NotifyChanges(IEntity[]? changedEntities)
     {
-        CollectionChanged?.Invoke(this, e);
-    }
-
-    private void InternalPropertyChanged(object sender, PropertyChangedEventArgs e)
-    {
-        PropertyChanged?.Invoke(this, e);
-    }
-
-    public override void NotifyChanges()
-    {
-        var newList = _container.Set<T>();
-
-        if (_predicate != null)
-        {
-            newList = newList.Where(_predicate);
-        }
-
-        if (_sortFunc != null)
-        {
-            newList = newList.OrderBy(_sortFunc);
-        }
-        else
-        {
-            //by default order by key
-            newList = newList.OrderBy(_ => _.GetKey());
-        }
+        var changedEntitiesMap = changedEntities != null ? new HashSet<IEntity>(changedEntities) : null;
+        var newList = GetContainerList();
 
         var newListEnumerator = newList.GetEnumerator();
         int i = 0;
@@ -96,8 +75,12 @@ class Query<T> : Query, IQuery<T> where T : class, IEntity
 
             var currentItem = newListEnumerator.Current;
 
-            if (currentItem.GetKey() == _collection[i].GetKey())
+            if (currentItem.GetKey()?.Equals(_collection[i].GetKey()) == true)
             {
+                if (changedEntitiesMap?.Contains(currentItem) == true)
+                {
+                    _collection[i] = currentItem;
+                }
                 i++;
                 continue;
             }
@@ -127,6 +110,40 @@ class Query<T> : Query, IQuery<T> where T : class, IEntity
     {
         return GetEnumerator();
     }
+
+
+    private IEnumerable<T> GetContainerList()
+    {
+        var newList = _container.Set<T>();
+
+        if (_predicate != null)
+        {
+            newList = newList.Where(_predicate);
+        }
+
+        if (_sortFunc != null)
+        {
+            newList = newList.OrderBy(_sortFunc);
+        }
+        else
+        {
+            //by default order by key
+            newList = newList.OrderBy(_ => _.GetKey());
+        }
+
+        return newList;
+    }
+
+    private void InternalCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    {
+        CollectionChanged?.Invoke(this, e);
+    }
+
+    private void InternalPropertyChanged(object sender, PropertyChangedEventArgs e)
+    {
+        PropertyChanged?.Invoke(this, e);
+    }
+
 }
 
 

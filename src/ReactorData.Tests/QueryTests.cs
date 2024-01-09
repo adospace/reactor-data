@@ -8,7 +8,7 @@ namespace ReactorData.Tests;
 class QueryTests
 {
     IServiceProvider _services;
-    IContainer _container;
+    IModelContext _container;
 
     [SetUp]
     public void Setup()
@@ -16,7 +16,7 @@ class QueryTests
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddReactorData();
         _services = serviceCollection.BuildServiceProvider();
-        _container = _services.GetRequiredService<IContainer>();
+        _container = _services.GetRequiredService<IModelContext>();
     }
 
     [Test]

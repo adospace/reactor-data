@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace ReactorData;
 
-public interface IContainer
+public interface IModelContext
 {
     void Add(IEntity entity);
 
@@ -25,9 +26,9 @@ public interface IContainer
 
     Action<Exception>? OnError { get; set; }
 
-    IQuery<T> Query<T>(Expression<Func<T, bool>>? expression, Expression<Func<T, object>>? sortFunc = null) where T : class, IEntity;
+    IQuery<T> Query<T>(Expression<Func<T, bool>>? expression = null, Expression<Func<T, object>>? sortFunc = null) where T : class, IEntity;
 
-    void Load<T>(Expression<Func<T, bool>> predicate) where T : class, IEntity;
+    void Load<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, Func<T, T, bool>? compareFunc = null) where T : class, IEntity;
 }
 
 public enum EntityStatus

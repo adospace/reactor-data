@@ -8,7 +8,7 @@ namespace ReactorData.Tests;
 public class BasicTests
 {
     IServiceProvider _services;
-    IContainer _container;
+    IModelContext _container;
 
     [SetUp]
     public void Setup()
@@ -17,7 +17,7 @@ public class BasicTests
         serviceCollection.AddReactorData();
         _services = serviceCollection.BuildServiceProvider();
 
-        _container = _services.GetRequiredService<IContainer>();
+        _container = _services.GetRequiredService<IModelContext>();
     }
 
 

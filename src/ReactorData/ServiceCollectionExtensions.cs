@@ -11,6 +11,6 @@ public static class ServiceCollectionExtensions
 {
     public static void AddReactorData(this IServiceCollection services)
     {
-        services.AddSingleton<IContainer, Implementation.Container>();
+        services.AddSingleton<IModelContext, Implementation.ModelContext>();
     }
 }

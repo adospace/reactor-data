@@ -11,7 +11,7 @@ public interface IStorage
 {
     Task Save(IEnumerable<StorageOperation> operations);
 
-    Task<IEnumerable<IEntity>> Load<T>(Expression<Func<T, bool>> predicate) where T : class, IEntity;
+    Task<IEnumerable<IEntity>> Load<T>(Func<IQueryable<T>, IQueryable<T>>? queryFunction = null) where T : class, IEntity;
 }
 
 public abstract class StorageOperation(IEntity entity)

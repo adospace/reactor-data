@@ -2,7 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using ReactorData.Tests.Models;
-using ReactorData.EFCore.Sqlite;
+using ReactorData.EFCore;
 using Microsoft.Data.Sqlite;
 
 namespace ReactorData.Tests;
@@ -10,7 +10,7 @@ namespace ReactorData.Tests;
 class BasicStorageTests
 {
     IServiceProvider _services;
-    IContainer _container;
+    IModelContext _container;
     SqliteConnection _connection;
 
     [SetUp]
@@ -23,7 +23,7 @@ class BasicStorageTests
 
         _services = serviceCollection.BuildServiceProvider();
 
-        _container = _services.GetRequiredService<IContainer>();
+        _container = _services.GetRequiredService<IModelContext>();
     }
 
 

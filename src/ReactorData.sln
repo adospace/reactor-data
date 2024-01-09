@@ -7,7 +7,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData", "ReactorData\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.Tests", "ReactorData.Tests\ReactorData.Tests.csproj", "{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactorData.EFCore.Sqlite", "ReactorData.EFCore.Sqlite\ReactorData.EFCore.Sqlite.csproj", "{FE1887B5-EE50-4302-A42A-997609F89B6E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactorData.EFCore", "ReactorData.EFCore\ReactorData.EFCore.csproj", "{C88DEE50-90D6-479D-BA43-6C4C7845EA75}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,10 +23,10 @@ Global
 		{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FE1887B5-EE50-4302-A42A-997609F89B6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FE1887B5-EE50-4302-A42A-997609F89B6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FE1887B5-EE50-4302-A42A-997609F89B6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FE1887B5-EE50-4302-A42A-997609F89B6E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C88DEE50-90D6-479D-BA43-6C4C7845EA75}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C88DEE50-90D6-479D-BA43-6C4C7845EA75}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C88DEE50-90D6-479D-BA43-6C4C7845EA75}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C88DEE50-90D6-479D-BA43-6C4C7845EA75}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

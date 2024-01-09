@@ -7,7 +7,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ReactorData.EFCore.Sqlite.Implementation;
+namespace ReactorData.EFCore.Implementation;
 
 class Storage<T>(IServiceProvider serviceProvider) : IStorage where T : DbContext
 {
@@ -41,14 +41,21 @@ class Storage<T>(IServiceProvider serviceProvider) : IStorage where T : DbContex
         }
     }
 
-    public async Task<IEnumerable<IEntity>> Load<TEntity>(Expression<Func<TEntity, bool>> predicate) where TEntity : class, IEntity
+    public async Task<IEnumerable<IEntity>> Load<TEntity>(Func<IQueryable<TEntity>, IQueryable<TEntity>>? queryFunction = null) where TEntity : class, IEntity
     {
         using var serviceScope = _serviceProvider.CreateScope();
         var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
 
         await Initialize(dbContext);
 
-        return await dbContext.Set<TEntity>().Where(predicate).ToListAsync();
+        IQueryable<TEntity> query = dbContext.Set<TEntity>();
+
+        if (queryFunction != null)
+        {
+            query = queryFunction(query);
+        }
+
+        return await query.ToListAsync();
     }
 
     public async Task Save(IEnumerable<StorageOperation> operations)

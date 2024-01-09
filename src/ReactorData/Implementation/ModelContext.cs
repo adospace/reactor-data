@@ -12,7 +12,7 @@ using static System.Collections.Specialized.BitVector32;
 
 namespace ReactorData.Implementation;
 
-class Container : IContainer
+class ModelContext : IModelContext
 {
     #region Operations
     abstract class Operation();
@@ -33,9 +33,10 @@ class Container : IContainer
         public IEnumerable<IEntity> Entities { get; } = entities;
     }
 
-    class OperationFetch(Func<IStorage, Task<IEnumerable<IEntity>>> loadFunction) : Operation
+    class OperationFetch(Func<IStorage, Task<IEnumerable<IEntity>>> loadFunction, Func<IEntity, IEntity, bool>? compareFunc = null) : Operation
     {
         public Func<IStorage, Task<IEnumerable<IEntity>>> LoadFunction { get; } = loadFunction;
+        public Func<IEntity, IEntity, bool>? CompareFunc { get; } = compareFunc;
     }
 
     class OperationSave() : Operation;
@@ -61,7 +62,7 @@ class Container : IContainer
 
     private readonly SemaphoreSlim _notificationSemaphore = new(1);
 
-    public Container(IServiceProvider serviceProvider)
+    public ModelContext(IServiceProvider serviceProvider)
     {
         _operationsBlock = new ActionBlock<Operation>(DoWork);
         _storage = serviceProvider.GetService<IStorage>();
@@ -120,12 +121,6 @@ class Container : IContainer
         switch (operation)
         {
             case OperationAdd operationAdd:
-                //if (_pendingDeletes.TryRemove(operationAdd.Entity, out _) ||
-                //    _pendingUpdates.TryGetValue(operationAdd.Entity, out _))
-                //{
-                //    _pendingQueue.RemoveFirst(_ => _.Entity == operationAdd.Entity);
-                //}
-
                 if (_pendingInserts.TryAdd(operationAdd.Entity, true))
                 {
                     _pendingQueue.Add(operationAdd);
@@ -135,10 +130,6 @@ class Container : IContainer
                 break;
             case OperationUpdate operationUpdate:
                 {
-                    //if (_pendingInserts.TryGetValue(operationUpdate.Entity, out _))
-                    //{
-                    //    break;
-                    //}
                     var entityKey = operationUpdate.Entity.GetKey().EnsureNotNull();
 
                     if (_pendingDeletes.TryRemove(entityKey, out _))
@@ -150,7 +141,7 @@ class Container : IContainer
                     if (_pendingUpdates.TryAdd(entityKey, operationUpdate.Entity))
                     {
                         _pendingQueue.Add(operationUpdate);
-                        NotifyChanges(operationUpdate.Entity.GetType());
+                        NotifyChanges(operationUpdate.Entity.GetType(), operationUpdate.Entity);
                     }
                 }
                 break;
@@ -175,12 +166,6 @@ class Container : IContainer
 
                     foreach (var entity in operationAddRange.Entities)
                     {
-                        //if (_pendingDeletes.TryRemove(entity, out _) ||
-                        //    _pendingUpdates.TryGetValue(entity, out _))
-                        //{
-                        //    _pendingQueue.RemoveFirst(_ => _.Entity == entity);
-                        //}
-
                         if (_pendingInserts.TryAdd(entity, true))
                         {
                             _pendingQueue.Add(new OperationAdd(entity));
@@ -204,12 +189,29 @@ class Container : IContainer
                 {
                     var entities = await operationFetch.LoadFunction(_storage);
                     HashSet<Type> queryTypesToNofity = [];
+                    ConcurrentDictionary<Type, HashSet<IEntity>> entitiesChanged = [];
 
                     foreach (var entity in entities)
                     {
                         var entityType = entity.GetType();
                         var set = _sets.GetOrAdd(entityType, []);
-                        set.Add(entity.GetKey().EnsureNotNull(), entity);
+
+                        var entityKey = entity.GetKey().EnsureNotNull();
+                        
+                        if (set.TryGetValue(entityKey, out var localEntity))
+                        {
+                            if (operationFetch.CompareFunc?.Invoke(entity, localEntity) == true)
+                            {
+                                var entityChangesInSet = entitiesChanged.GetOrAdd(entityType, []);
+                                entityChangesInSet.Add(entity);
+                            }
+
+                            set[entityKey] = entity;
+                        }
+                        else
+                        {
+                            set.Add(entityKey, entity);
+                        }
 
                         if (!queryTypesToNofity.Contains(entityType))
                         {
@@ -219,7 +221,14 @@ class Container : IContainer
 
                     foreach (var queryTypeToNofity in queryTypesToNofity)
                     {
-                        NotifyChanges(queryTypeToNofity);
+                        if (entitiesChanged.TryGetValue(queryTypeToNofity, out var entityChangesInSet))
+                        {
+                            NotifyChanges(queryTypeToNofity, [.. entityChangesInSet]);
+                        }
+                        else
+                        {
+                            NotifyChanges(queryTypeToNofity);
+                        }                        
                     }
                 }
                 break;
@@ -326,9 +335,12 @@ class Container : IContainer
         _operationsBlock.Post(new OperationRemove(entity));
     }
 
-    public void Load<T>(Expression<Func<T, bool>> predicate) where T : class, IEntity
+    public void Load<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, Func<T, T, bool>? compareFunc = null) where T : class, IEntity
     {
-        _operationsBlock.Post(new OperationFetch(storage => storage.Load(predicate)));
+        _operationsBlock.Post(
+            new OperationFetch(
+                loadFunction: storage => storage.Load(predicate?.Compile()),
+                compareFunc: compareFunc != null ? (storageEntity, localEntity) => compareFunc((T)storageEntity, (T)localEntity) : null));
     }
 
     public void Save()
@@ -343,7 +355,7 @@ class Container : IContainer
 
         foreach (var existingEntityPair in set)
         {
-            yield return (T)existingEntityPair.Key;
+            yield return (T)existingEntityPair.Value;
         }
 
         foreach (var existingPendingInsert in _pendingQueue.OfType<OperationAdd>())
@@ -373,7 +385,7 @@ class Container : IContainer
         return query;
     }
 
-    private void NotifyChanges(Type typeOfEntity)
+    private void NotifyChanges(Type typeOfEntity, params IEntity[] changedEntities)
     {
         var queries = _queries.GetOrAdd(typeOfEntity, []);
 
@@ -385,7 +397,7 @@ class Container : IContainer
             {
                 if (queryReference.TryGetTarget(out var query))
                 {
-                    query.NotifyChanges();
+                    query.NotifyChanges(changedEntities);
                 }
                 else
                 {
