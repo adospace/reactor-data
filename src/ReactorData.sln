@@ -7,9 +7,11 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData", "ReactorData\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.Tests", "ReactorData.Tests\ReactorData.Tests.csproj", "{BF54BCFB-F026-4AE4-A4F3-2A6EC61E6200}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactorData.EFCore", "ReactorData.EFCore\ReactorData.EFCore.csproj", "{C88DEE50-90D6-479D-BA43-6C4C7845EA75}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.EFCore", "ReactorData.EFCore\ReactorData.EFCore.csproj", "{C88DEE50-90D6-479D-BA43-6C4C7845EA75}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactorData.Sqlite", "ReactorData.Sqlite\ReactorData.Sqlite.csproj", "{9E3E4008-BBFB-400F-B86D-FCE47D854B8A}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactorData.Sqlite", "ReactorData.Sqlite\ReactorData.Sqlite.csproj", "{9E3E4008-BBFB-400F-B86D-FCE47D854B8A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactorData.SourceGenerators", "ReactorData.SourceGenerators\ReactorData.SourceGenerators.csproj", "{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -33,6 +35,10 @@ Global
 		{9E3E4008-BBFB-400F-B86D-FCE47D854B8A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9E3E4008-BBFB-400F-B86D-FCE47D854B8A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9E3E4008-BBFB-400F-B86D-FCE47D854B8A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

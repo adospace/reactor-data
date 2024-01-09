@@ -134,12 +134,12 @@ class Query<T> : Query, IQuery<T> where T : class, IEntity
         return newList;
     }
 
-    private void InternalCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    private void InternalCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         CollectionChanged?.Invoke(this, e);
     }
 
-    private void InternalPropertyChanged(object sender, PropertyChangedEventArgs e)
+    private void InternalPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         PropertyChanged?.Invoke(this, e);
     }

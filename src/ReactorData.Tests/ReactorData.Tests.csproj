@@ -25,9 +25,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\ReactorData\ReactorData.csproj" />
+    <ProjectReference Include="..\ReactorData.SourceGenerators\ReactorData.SourceGenerators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="False" />
     <ProjectReference Include="..\ReactorData.EFCore\ReactorData.EFCore.csproj" />
     <ProjectReference Include="..\ReactorData.Sqlite\ReactorData.Sqlite.csproj" />
-    <ProjectReference Include="..\ReactorData\ReactorData.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="False" />
   </ItemGroup>
 
 </Project>

@@ -18,24 +18,6 @@ public class ModelPartialClassSourceGenerator : ISourceGenerator
 
     public void Initialize(GeneratorInitializationContext context)
     {
-//        context.RegisterForPostInitialization((i) => i.AddSource("ModelAttribute.g.cs", @"using System;
-
-//#nullable enable
-//namespace ReactorData
-//{
-//    [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-//    class ModelAttribute : Attribute
-//    {
-//    }
-
-
-//    [AttributeUsage(AttributeTargets.Property, AllowMultiple = false)]
-//    class ModelKeyAttribute : Attribute
-//    {
-//    }
-//}
-//"));
-
         context.RegisterForSyntaxNotifications(() => new ModelPartialClassSyntaxReceiver());
     }
 
