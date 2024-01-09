@@ -2,8 +2,19 @@
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Version>0.0.1</Version>
+    <Authors>adospace</Authors>
+    <Description>ReactorData.Sqlite is the Sqlite based plugin for ReactorData.</Description>
+    <Copyright>Adolfo Marinucci</Copyright>
+    <PackageProjectUrl>https://github.com/adospace/reactor-data</PackageProjectUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/adospace/reactor-data</RepositoryUrl>
+    <PackageTags>database storage persistance mvu UI</PackageTags>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageId>ReactorData.Sqlite</PackageId>
   </PropertyGroup>
 
   <ItemGroup>
