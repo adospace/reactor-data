@@ -27,7 +27,7 @@ class QueryTests
             Title = "Learn C#"
         };
 
-        var query = _container.Query<Todo>(_ => _.Done);
+        var query = _container.Query<Todo>(query => query.Where(_ => _.Done).OrderBy(_=>_.Title));
 
         _container.Add(todo);
 

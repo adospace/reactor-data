@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Runtime.Serialization;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -58,17 +59,22 @@ class ModelContext : IModelContext
 
     private readonly IStorage? _storage;
 
-    private readonly ConcurrentDictionary<Type, List<WeakReference<Query>>> _queries = [];
+    private readonly ConcurrentDictionary<Type, List<WeakReference<IObservableQuery>>> _queries = [];
 
     private readonly SemaphoreSlim _notificationSemaphore = new(1);
 
-    public ModelContext(IServiceProvider serviceProvider)
+    public ModelContext(IServiceProvider serviceProvider, ModelContextOptions options)
     {
         _operationsBlock = new ActionBlock<Operation>(DoWork);
         _storage = serviceProvider.GetService<IStorage>();
+
+        Options = options;
+        Options.ConfigureContext?.Invoke(this);
     }
 
     public Action<Exception>? OnError { get; set; }
+
+    public ModelContextOptions Options { get; }
 
     public EntityStatus GetEntityStatus(IEntity entity)
     {
@@ -348,20 +354,12 @@ class ModelContext : IModelContext
         _operationsBlock.Post(new OperationSave());
     }
 
-    public IEnumerable<T> Set<T>() where T : class, IEntity
+    public IReadOnlyList<T> Set<T>() where T : class, IEntity
     {
         var typeofT = typeof(T);
         var set = _sets.GetOrAdd(typeofT, []);
 
-        foreach (var existingEntityPair in set)
-        {
-            yield return (T)existingEntityPair.Value;
-        }
-
-        foreach (var existingPendingInsert in _pendingQueue.OfType<OperationAdd>())
-        {
-            yield return (T)existingPendingInsert.Entity;
-        }
+        return set.Select(_=>_.Value).Cast<T>().Concat(_pendingQueue.OfType<OperationAdd>().Select(_=>_.Entity).Cast<T>()).ToList();
     }
 
     public async Task Flush()
@@ -371,18 +369,17 @@ class ModelContext : IModelContext
         await signalEvent.WaitAsync();
     }
 
-    public IQuery<T> Query<T>(Expression<Func<T, bool>>? predicateExpression = null, Expression<Func<T, object>>? sortFuncExpression = null) where T : class, IEntity
+    public IQuery<T> Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicateExpression = null) where T : class, IEntity
     {
         var predicate = predicateExpression?.Compile();
-        var sortFunction = sortFuncExpression?.Compile();
 
         var typeofT = typeof(T);
         var queries = _queries.GetOrAdd(typeofT, []);
 
-        var query = new Query<T>(this, predicate, sortFunction);
-        queries.Add(new WeakReference<Query>(query));
+        var observableQuery = new ObservableQuery<T>(this, predicate);
+        queries.Add(new WeakReference<IObservableQuery>(observableQuery));
         
-        return query;
+        return observableQuery.Query;
     }
 
     public T? FindByKey<T>(object key) where T : class, IEntity
@@ -405,7 +402,7 @@ class ModelContext : IModelContext
         try
         {
             _notificationSemaphore.Wait();
-            List<WeakReference<Query>>? referencesToRemove = null;
+            List<WeakReference<IObservableQuery>>? referencesToRemove = null;
             foreach (var queryReference in queries)
             {
                 if (queryReference.TryGetTarget(out var query))

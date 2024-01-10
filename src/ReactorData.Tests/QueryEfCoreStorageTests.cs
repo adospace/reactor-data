@@ -41,8 +41,8 @@ class QueryEfCoreStorageTests
 
         await _container.Flush();
 
-        var queryFirst = _container.Query<Blog>(_ => _.Title.StartsWith("My"));
-        var querySecond = _container.Query<Blog>(_ => _.Title.Contains("second"));
+        var queryFirst = _container.Query<Blog>(query => query.Where(_ => _.Title.StartsWith("My")));
+        var querySecond = _container.Query<Blog>(query => query.Where(_ => _.Title.Contains("second")));
 
         queryFirst.Count.Should().Be(1);
         querySecond.Count.Should().Be(0);

@@ -4,8 +4,7 @@ using ReactorData.Tests.Models;
 using FluentAssertions;
 using System.Collections.Specialized;
 using ReactorData.Sqlite;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
+using System.Collections.Generic;
 
 namespace ReactorData.Tests;
 

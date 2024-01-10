@@ -8,5 +8,5 @@ partial class Todo
     [Key]
     public required string Title { get; set; }
 
-    public bool Done {  get; set; }
+    public bool Done { get; set; }
 }

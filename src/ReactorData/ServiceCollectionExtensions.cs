@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using ReactorData.Implementation;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -9,8 +10,13 @@ namespace ReactorData;
 
 public static class ServiceCollectionExtensions
 {
-    public static void AddReactorData(this IServiceCollection services)
+    public static void AddReactorData(this IServiceCollection services, Action<ModelContextOptions>? configureAction = null)
     {
-        services.AddSingleton<IModelContext, Implementation.ModelContext>();
+        services.AddSingleton<IModelContext>(sp =>
+        { 
+            var options = new ModelContextOptions();
+            configureAction?.Invoke(options);
+            return new ModelContext(sp, options);
+        });
     }
 }

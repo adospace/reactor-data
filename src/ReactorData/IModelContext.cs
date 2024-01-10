@@ -20,7 +20,7 @@ public interface IModelContext
 
     T? FindByKey<T>(object key) where T : class, IEntity;
 
-    IEnumerable<T> Set<T>() where T : class, IEntity;
+    IReadOnlyList<T> Set<T>() where T : class, IEntity;
 
     Task Flush();
 
@@ -28,7 +28,7 @@ public interface IModelContext
 
     Action<Exception>? OnError { get; set; }
 
-    IQuery<T> Query<T>(Expression<Func<T, bool>>? expression = null, Expression<Func<T, object>>? sortFunc = null) where T : class, IEntity;
+    IQuery<T> Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null) where T : class, IEntity;
 
     void Load<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, Func<T, T, bool>? compareFunc = null) where T : class, IEntity;
 }

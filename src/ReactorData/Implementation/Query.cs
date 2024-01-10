@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.VisualBasic;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -7,144 +8,127 @@ using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Text;
+using System.Xml.Linq;
 
 namespace ReactorData.Implementation;
 
-abstract class Query
+interface IObservableQuery
 {
     public abstract void NotifyChanges(IEntity[]? changedEntities);
 }
 
-class Query<T> : Query, IQuery<T> where T : class, IEntity
+class ObservableQuery<T> : IObservableQuery where T : class, IEntity
 {
-    private readonly ObservableCollection<T> _collection;
+    class ObservableQueryCollection(ObservableQuery<T> owner, ObservableCollection<T> observableCollection) 
+        : ReadOnlyObservableCollection<T>(observableCollection), IQuery<T>
+    {
+        //note: required to keep the owener alive
+        private readonly ObservableQuery<T> _owner = owner;
+    }
+
     private readonly ModelContext _container;
-    private readonly Func<T, bool>? _predicate;
-    private readonly Func<T, object>? _sortFunc;
 
-    //class SortableQuery : ISortableList<T>
-    //{
-    //    private readonly IEnumerable<T> _list;
+    private readonly Func<IQueryable<T>, IQueryable<T>>? _predicate;
+    
+    private readonly ObservableCollection<T> _collection;
 
-    //    public SortableQuery(IEnumerable<T> list)
-    //    {
-    //        _list = list;
-    //    }
-
-    //    public ISortableList<T> OrderBy<TKey>(Expression<Func<T, TKey>> expression)
-    //    {
-    //        _list.OrderBy(expression.Compile());
-    //        return this;
-    //    }
-    //}
-
-    public Query(ModelContext container, Func<T, bool>? predicate = null, Func<T, object>? sortFunc = null)
+    public ObservableQuery(ModelContext container, Func<IQueryable<T>, IQueryable<T>>? predicate = null)
     {
         _container = container;
         _predicate = predicate;
-        _sortFunc = sortFunc;
 
         _collection = new ObservableCollection<T>(GetContainerList());
-        
-        _collection.CollectionChanged += InternalCollectionChanged;
-        ((INotifyPropertyChanged)_collection).PropertyChanged += InternalPropertyChanged;
+        Query = new ObservableQueryCollection(this, _collection);
     }
 
-    public event NotifyCollectionChangedEventHandler? CollectionChanged;
+    public IQuery<T> Query { get; }
 
-    public event PropertyChangedEventHandler? PropertyChanged;
-
-    public int Count => _collection.Count;
-
-    public T this[int index] => _collection[index];
-
-    public override void NotifyChanges(IEntity[]? changedEntities)
+    public void NotifyChanges(IEntity[]? changedEntities)
     {
-        var changedEntitiesMap = changedEntities != null ? new HashSet<IEntity>(changedEntities) : null;
-        var newList = GetContainerList();
-
-        var newListEnumerator = newList.GetEnumerator();
-        int i = 0;
-
-        while (i < _collection.Count)
+        if (_container.Options.Dispatcher != null)
         {
-            if (!newListEnumerator.MoveNext())
-            {
-                break;
-            }
-
-            var currentItem = newListEnumerator.Current;
-
-            if (currentItem.GetKey()?.Equals(_collection[i].GetKey()) == true)
-            {
-                if (changedEntitiesMap?.Contains(currentItem) == true)
-                {
-                    _collection[i] = currentItem;
-                }
-                i++;
-                continue;
-            }
-
-            _collection.Insert(i, currentItem);
-            i++;
-        }
-
-        while (i < _collection.Count)
-        {
-            _collection.RemoveAt(i);
-            i++;
-        }
-
-        while (newListEnumerator.MoveNext())
-        {
-            _collection.Add(newListEnumerator.Current);
-        }
-    }
-
-    public IEnumerator<T> GetEnumerator()
-    {
-        return _collection.GetEnumerator();
-    }
-
-    IEnumerator IEnumerable.GetEnumerator()
-    {
-        return GetEnumerator();
-    }
-
-
-    private IEnumerable<T> GetContainerList()
-    {
-        var newList = _container.Set<T>();
-
-        if (_predicate != null)
-        {
-            newList = newList.Where(_predicate);
-        }
-
-        if (_sortFunc != null)
-        {
-            newList = newList.OrderBy(_sortFunc);
+            _container.Options.Dispatcher.Invoke(() => InternalNotifyChanges(changedEntities));
         }
         else
         {
-            //by default order by key
-            newList = newList.OrderBy(_ => _.GetKey());
+            InternalNotifyChanges(changedEntities);
+        }
+    }
+
+    private void InternalNotifyChanges(IEntity[]? changedEntities)
+    {
+        var changedEntitiesMap = changedEntities != null ? new HashSet<IEntity>(changedEntities) : null;
+        var newItems = GetContainerList();
+
+        static bool areEqual(T newItem, T existingItem)
+            => newItem.GetKey()?.Equals(existingItem.GetKey()) == true;
+
+        SyncLists(_collection, newItems, areEqual, item => changedEntities?.Contains(item) == true);
+    }
+
+    public static void SyncLists(
+        IList<T> existingList,
+        IList<T> newList,
+        Func<T, T, bool> areEqual,
+        Func<T, bool> replaceItem)
+    {
+        int existingIndex = 0;
+        int newIndex = 0;
+
+        while (existingIndex < existingList.Count && newIndex < newList.Count)
+        {
+            if (areEqual(existingList[existingIndex], newList[newIndex]))
+            {
+                // The items are equal, move to the next item in both lists
+                if (replaceItem(newList[newIndex]))
+                {
+                    existingList[existingIndex] = newList[newIndex];
+                }
+                existingIndex++;
+                newIndex++;
+            }
+            else if (existingList.Contains(newList[newIndex]))
+            {
+                // The new item already exists later in the existing list; remove the current unmatched item in existing
+                existingList.RemoveAt(existingIndex);
+                // Do not increment existingIndex since we removed the item at existingIndex, the next item is now at existingIndex
+            }
+            else
+            {
+                // The new item doesn't exist in the existing list, insert it
+                existingList.Insert(existingIndex, newList[newIndex]);
+                existingIndex++;
+                newIndex++;
+            }
         }
 
-        return newList;
+        // Remove any leftover items from existing list that are not in new list
+        while (existingIndex < existingList.Count)
+        {
+            existingList.RemoveAt(existingIndex); // Note: remaining items are at the same index after removal
+        }
+
+        // Append any remaining new items that have not been processed yet
+        while (newIndex < newList.Count)
+        {
+            existingList.Add(newList[newIndex]);
+            newIndex++;
+        }
     }
 
-    private void InternalCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private T[] GetContainerList()
     {
-        CollectionChanged?.Invoke(this, e);
-    }
+        var newList = _container.Set<T>().AsQueryable<T>();
 
-    private void InternalPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        PropertyChanged?.Invoke(this, e);
-    }
+        if (_predicate != null)
+        {
+            newList = _predicate(newList);
+        }
 
+        return [.. newList];
+    }
 }
+
 
 
 //public interface ISortableList<T>
