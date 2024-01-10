@@ -16,6 +16,8 @@ public interface IModelContext
 
     void Delete(IEntity entity);
 
+    void DeleteRange(IEnumerable<IEntity> entity);
+
     void Save();
 
     T? FindByKey<T>(object key) where T : class, IEntity;

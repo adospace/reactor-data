@@ -14,15 +14,15 @@ public interface IStorage
     Task<IEnumerable<IEntity>> Load<T>(Func<IQueryable<T>, IQueryable<T>>? queryFunction = null) where T : class, IEntity;
 }
 
-public abstract class StorageOperation(IEntity entity)
+public abstract class StorageOperation(IEnumerable<IEntity> entities)
 {
-    public IEntity Entity { get; } = entity;
+    public IEnumerable<IEntity> Entities { get; } = entities;
 }
 
-public class StorageInsert(IEntity entity) : StorageOperation(entity);
+public class StorageAdd(IEnumerable<IEntity> entities) : StorageOperation(entities);
 
-public class StorageUpdate(IEntity entity) : StorageOperation(entity);
+public class StorageUpdate(IEnumerable<IEntity> entities) : StorageOperation(entities);
 
-public class StorageDelete(IEntity entity) : StorageOperation(entity);
+public class StorageDelete(IEnumerable<IEntity> entities) : StorageOperation(entities);
 
 

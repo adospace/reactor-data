@@ -18,18 +18,29 @@ class ModelContext : IModelContext
     #region Operations
     abstract class Operation();
 
-    abstract class OperationPending(IEntity entity) : Operation
+    abstract class OperationPending() : Operation;
+
+    abstract class OperationSingle(IEntity entity) : OperationPending
     {
         public IEntity Entity { get; } = entity;
     }
 
-    class OperationAdd(IEntity entity) : OperationPending(entity);
+    class OperationAdd(IEntity entity) : OperationSingle(entity);
 
-    class OperationUpdate(IEntity entity) : OperationPending(entity);
+    class OperationUpdate(IEntity entity) : OperationSingle(entity);
 
-    class OperationRemove(IEntity entity) : OperationPending(entity);
+    class OperationDelete(IEntity entity) : OperationSingle(entity);
 
-    class OperationAddRange(IEnumerable<IEntity> entities) : Operation
+    class OperationAddRange(IEnumerable<IEntity> entities) : OperationPending
+    {
+        public IEnumerable<IEntity> Entities { get; } = entities;
+    }
+    class OperationUpdateRange(IEnumerable<IEntity> entities) : OperationPending
+    {
+        public IEnumerable<IEntity> Entities { get; } = entities;
+    }
+
+    class OperationDeleteRange(IEnumerable<IEntity> entities) : OperationPending
     {
         public IEnumerable<IEntity> Entities { get; } = entities;
     }
@@ -140,7 +151,7 @@ class ModelContext : IModelContext
 
                     if (_pendingDeletes.TryRemove(entityKey, out _))
                     {
-                        _pendingQueue.RemoveFirst(_ => _.Entity == operationUpdate.Entity);
+                        _pendingQueue.RemoveFirst(_ => _ is OperationDelete operationDelete && operationDelete.Entity == operationUpdate.Entity);
                         NotifyChanges(operationUpdate.Entity.GetType());
                     }
 
@@ -151,12 +162,12 @@ class ModelContext : IModelContext
                     }
                 }
                 break;
-            case OperationRemove operationRemove:
+            case OperationDelete operationRemove:
                 {
                     var entityKey = operationRemove.Entity.GetKey().EnsureNotNull();
                     if (_pendingUpdates.TryGetValue(entityKey, out _))
                     {
-                        _pendingQueue.RemoveFirst(_ => _.Entity == operationRemove.Entity);
+                        _pendingQueue.RemoveFirst(_ => _ is OperationUpdate operationUpdate && operationUpdate.Entity == operationRemove.Entity);
                     }
 
                     if (_pendingDeletes.TryAdd(entityKey, operationRemove.Entity))
@@ -169,12 +180,12 @@ class ModelContext : IModelContext
             case OperationAddRange operationAddRange:
                 {
                     HashSet<Type> queryTypesToNofity = [];
-
+                    List<IEntity> entitiesToAdd = [];
                     foreach (var entity in operationAddRange.Entities)
                     {
                         if (_pendingInserts.TryAdd(entity, true))
                         {
-                            _pendingQueue.Add(new OperationAdd(entity));
+                            entitiesToAdd.Add(entity);
 
                             if (!queryTypesToNofity.Contains(entity.GetType()))
                             {
@@ -182,6 +193,42 @@ class ModelContext : IModelContext
                             }
                         }
                     }
+
+                    _pendingQueue.Add(new OperationAddRange(entitiesToAdd));
+
+                    foreach (var queryTypeToNofity in queryTypesToNofity)
+                    {
+                        NotifyChanges(queryTypeToNofity);
+                    }
+                }
+
+                break;
+            case OperationDeleteRange operationDeleteRange:
+                {
+                    HashSet<Type> queryTypesToNofity = [];
+                    List<IEntity> entitiesToDelete = [];
+
+                    foreach (var entity in operationDeleteRange.Entities)
+                    {
+                        var entityKey = entity.GetKey().EnsureNotNull();
+
+                        if (_pendingUpdates.TryGetValue(entityKey.EnsureNotNull(), out _))
+                        {
+                            _pendingQueue.RemoveFirst(_ => _ is OperationUpdate operationUpdate && operationUpdate.Entity == entity);
+                        }
+
+                        if (_pendingDeletes.TryAdd(entityKey, entity))
+                        {
+                            entitiesToDelete.Add(entity);
+
+                            if (!queryTypesToNofity.Contains(entity.GetType()))
+                            {
+                                queryTypesToNofity.Add(entity.GetType());
+                            }
+                        }
+                    }
+
+                    _pendingQueue.Add(new OperationDeleteRange(entitiesToDelete));
 
                     foreach (var queryTypeToNofity in queryTypesToNofity)
                     {
@@ -219,10 +266,7 @@ class ModelContext : IModelContext
                             set.Add(entityKey, entity);
                         }
 
-                        if (!queryTypesToNofity.Contains(entityType))
-                        {
-                            queryTypesToNofity.Add(entityType);
-                        }
+                        queryTypesToNofity.Add(entityType);
                     }
 
                     foreach (var queryTypeToNofity in queryTypesToNofity)
@@ -248,13 +292,22 @@ class ModelContext : IModelContext
                             switch (pendingOperation)
                             {
                                 case OperationAdd operationAdd:
-                                    listOfStorageOperation.Add(new StorageInsert(operationAdd.Entity));
+                                    listOfStorageOperation.Add(new StorageAdd(new[] { operationAdd.Entity }));
                                     break;
                                 case OperationUpdate operationUpdate:
-                                    listOfStorageOperation.Add(new StorageUpdate(operationUpdate.Entity));
+                                    listOfStorageOperation.Add(new StorageUpdate(new[] { operationUpdate.Entity }));
                                     break;
-                                case OperationRemove operationRemove:
-                                    listOfStorageOperation.Add(new StorageDelete(operationRemove.Entity));
+                                case OperationDelete operationRemove:
+                                    listOfStorageOperation.Add(new StorageDelete(new[] { operationRemove.Entity }));
+                                    break;
+                                case OperationAddRange operationAddRange:
+                                    listOfStorageOperation.Add(new StorageAdd(operationAddRange.Entities));
+                                    break;
+                                case OperationUpdateRange operationUpdateRange:
+                                    listOfStorageOperation.Add(new StorageUpdate(operationUpdateRange.Entities));
+                                    break;
+                                case OperationDeleteRange operationDeleteRange:
+                                    listOfStorageOperation.Add(new StorageDelete(operationDeleteRange.Entities));
                                     break;
                             }
                         }
@@ -269,17 +322,32 @@ class ModelContext : IModelContext
                         {
                             case OperationAdd operationAdd:
                                 {
-                                    var set = _sets.GetOrAdd(operationAdd.Entity.GetType(), []);
+                                    var entityType = operationAdd.Entity.GetType();
+                                    var set = _sets.GetOrAdd(entityType, []);
                                     set.Add(operationAdd.Entity.GetKey().EnsureNotNull(), operationAdd.Entity);
-                                    if (!queryTypesToNofity.Contains(operationAdd.Entity.GetType()))
+                                    if (!queryTypesToNofity.Contains(entityType))
                                     {
-                                        queryTypesToNofity.Add(operationAdd.Entity.GetType());
+                                        queryTypesToNofity.Add(entityType);
+                                    }
+                                }
+                                break;
+                            case OperationAddRange operationAddRage:
+                                {
+                                    foreach (var entity in operationAddRage.Entities)
+                                    {
+                                        var entityType = entity.GetType();
+                                        var set = _sets.GetOrAdd(entityType, []);
+                                        set.Add(entity.GetKey().EnsureNotNull(), entity);
+                                        if (!queryTypesToNofity.Contains(entityType))
+                                        {
+                                            queryTypesToNofity.Add(entityType);
+                                        }
                                     }
                                 }
                                 break;
                             case OperationUpdate operationUpdate:
                                 break;
-                            case OperationRemove operationRemove:
+                            case OperationDelete operationRemove:
                                 {
                                     var set = _sets.GetOrAdd(operationRemove.Entity.GetType(), []);
                                     set.Remove(operationRemove.Entity.GetKey().EnsureNotNull());
@@ -287,6 +355,21 @@ class ModelContext : IModelContext
                                     if (!queryTypesToNofity.Contains(operationRemove.Entity.GetType()))
                                     {
                                         queryTypesToNofity.Add(operationRemove.Entity.GetType());
+                                    }
+                                }
+                                break;
+                            case OperationDeleteRange operationRemoveRange:
+                                {
+                                    foreach (var entity in operationRemoveRange.Entities)
+                                    {
+                                        var entityType = entity.GetType();
+                                        var set = _sets.GetOrAdd(entityType, []);
+                                        set.Remove(entity.GetKey().EnsureNotNull());
+
+                                        if (!queryTypesToNofity.Contains(entityType))
+                                        {
+                                            queryTypesToNofity.Add(entityType);
+                                        }
                                     }
                                 }
                                 break;
@@ -338,7 +421,12 @@ class ModelContext : IModelContext
             throw new InvalidOperationException("Deleting entity with uninitialized key");
         }
 
-        _operationsBlock.Post(new OperationRemove(entity));
+        _operationsBlock.Post(new OperationDelete(entity));
+    }
+
+    public void DeleteRange(IEnumerable<IEntity> entities)
+    {
+        _operationsBlock.Post(new OperationDeleteRange(entities));
     }
 
     public void Load<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, Func<T, T, bool>? compareFunc = null) where T : class, IEntity

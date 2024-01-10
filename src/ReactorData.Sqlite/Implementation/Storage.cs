@@ -207,90 +207,116 @@ class Storage : IStorage
 
         foreach (var operation in operations)
         {
-            command.Parameters.Clear();
-
             switch (operation)
             {
-                case StorageInsert storageInsert:
+                case StorageAdd storageInsert:
                     {
-                        var entityType = storageInsert.Entity.GetType();
-                        if (!_configuration.EnsureNotNull().Models.TryGetValue(entityType, out var modelConfiguration))
+                        foreach (var entity in storageInsert.Entities)
                         {
-                            throw new InvalidOperationException($"Missing model configuration for {entityType.Name}");
-                        }
-
-                        //insert into MyTable (Column1, Column2) Values (Val1, Val2) Returning RowId;
-                        if (modelConfiguration.KeyPropertyType == typeof(int))
-                        {
-                            command.CommandText = $$"""
-                                INSERT INTO {{modelConfiguration.TableName}} (MODEL) VALUES ($json) RETURNING ROWID
-                                """;
-                            command.Parameters.AddWithValue("$json", "{}");
-
-                            var key = await command.ExecuteScalarAsync();
-
-                            modelConfiguration.KeyPropertyInfo.SetValue(storageInsert.Entity, Convert.ChangeType(key, modelConfiguration.KeyPropertyType));
-
-                            var json = System.Text.Json.JsonSerializer.Serialize(storageInsert.Entity, entityType);
-
-                            command.CommandText = $$"""
-                                UPDATE {{modelConfiguration.TableName}} SET MODEL = $json WHERE ID = $id
-                                """;
-                            command.Parameters.Clear();
-                            command.Parameters.AddWithValue("$id", storageInsert.Entity.GetKey().EnsureNotNull());
-                            command.Parameters.AddWithValue("$json", json);
-
-                            await command.ExecuteNonQueryAsync();
-                        }
-                        else
-                        {
-                            var json = System.Text.Json.JsonSerializer.Serialize(storageInsert.Entity, entityType);
-
-                            command.CommandText = $$"""
-                                INSERT INTO {{modelConfiguration.TableName}} (ID, MODEL) VALUES ($id, $json)
-                                """;
-                            command.Parameters.AddWithValue("$id", storageInsert.Entity.GetKey().EnsureNotNull());
-                            command.Parameters.AddWithValue("$json", json);
-
-                            await command.ExecuteNonQueryAsync();
+                            await Insert(command, entity);
                         }
                     }
                     break;
                 case StorageUpdate storageUpdate:
                     {
-                        var entityType = storageUpdate.Entity.GetType();
-                        if (!_configuration.EnsureNotNull().Models.TryGetValue(entityType, out var modelConfiguration))
+                        foreach (var entity in storageUpdate.Entities)
                         {
-                            throw new InvalidOperationException($"Missing model configuration for {entityType.Name}");
+                            await Update(command, entity);
                         }
-                        var json = System.Text.Json.JsonSerializer.Serialize(storageUpdate.Entity, entityType);
-
-                        command.CommandText = $$"""
-                                UPDATE {{modelConfiguration.TableName}} SET MODEL = $json WHERE ID = $id
-                                """;
-                        command.Parameters.AddWithValue("$id", storageUpdate.Entity.GetKey().EnsureNotNull());
-                        command.Parameters.AddWithValue("$json", json);
-
-                        await command.ExecuteNonQueryAsync();
                     }
                     break;
                 case StorageDelete storageDelete:
                     {
-                        var entityType = storageDelete.Entity.GetType();
-                        if (!_configuration.EnsureNotNull().Models.TryGetValue(entityType, out var modelConfiguration))
+                        foreach (var entity in storageDelete.Entities)
                         {
-                            throw new InvalidOperationException($"Missing model configuration for {entityType.Name}");
+                            await Delete(command, entity);
                         }
-
-                        command.CommandText = $$"""
-                                DELETE FROM {{modelConfiguration.TableName}} WHERE ID = $id
-                                """;
-                        command.Parameters.AddWithValue("$id", storageDelete.Entity.GetKey().EnsureNotNull());
-
-                        await command.ExecuteNonQueryAsync();
                     }
                     break;
             }
+        }
+    }
+
+    private async Task Delete(SqliteCommand command, IEntity entity)
+    {
+        var entityType = entity.GetType();
+        if (!_configuration.EnsureNotNull().Models.TryGetValue(entityType, out var modelConfiguration))
+        {
+            throw new InvalidOperationException($"Missing model configuration for {entityType.Name}");
+        }
+
+        command.CommandText = $$"""
+                                DELETE FROM {{modelConfiguration.TableName}} WHERE ID = $id
+                                """;
+        command.Parameters.Clear();
+        command.Parameters.AddWithValue("$id", entity.GetKey().EnsureNotNull());
+
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task Update(SqliteCommand command, IEntity entity)
+    {
+        var entityType = entity.GetType();
+        if (!_configuration.EnsureNotNull().Models.TryGetValue(entityType, out var modelConfiguration))
+        {
+            throw new InvalidOperationException($"Missing model configuration for {entityType.Name}");
+        }
+        var json = System.Text.Json.JsonSerializer.Serialize(entity, entityType);
+
+        command.CommandText = $$"""
+                                UPDATE {{modelConfiguration.TableName}} SET MODEL = $json WHERE ID = $id
+                                """;
+        command.Parameters.Clear();
+        command.Parameters.AddWithValue("$id", entity.GetKey().EnsureNotNull());
+        command.Parameters.AddWithValue("$json", json);
+
+        await command.ExecuteNonQueryAsync();
+    }
+
+    private async Task Insert(SqliteCommand command, IEntity entity)
+    {
+        var entityType = entity.GetType();
+        if (!_configuration.EnsureNotNull().Models.TryGetValue(entityType, out var modelConfiguration))
+        {
+            throw new InvalidOperationException($"Missing model configuration for {entityType.Name}");
+        }
+
+
+        if (modelConfiguration.KeyPropertyType == typeof(int))
+        {
+            command.CommandText = $$"""
+                                    INSERT INTO {{modelConfiguration.TableName}} (MODEL) VALUES ($json) RETURNING ROWID
+                                    """;
+            command.Parameters.Clear();
+            command.Parameters.AddWithValue("$json", "{}");
+
+            var key = await command.ExecuteScalarAsync();
+
+            modelConfiguration.KeyPropertyInfo.SetValue(entity, Convert.ChangeType(key, modelConfiguration.KeyPropertyType));
+
+            var json = System.Text.Json.JsonSerializer.Serialize(entity, entityType);
+
+            command.CommandText = $$"""
+                                    UPDATE {{modelConfiguration.TableName}} SET MODEL = $json WHERE ID = $id
+                                    """;
+            command.Parameters.Clear();
+            command.Parameters.AddWithValue("$id", entity.GetKey().EnsureNotNull());
+            command.Parameters.AddWithValue("$json", json);
+
+            await command.ExecuteNonQueryAsync();
+        }
+        else
+        {
+            var json = System.Text.Json.JsonSerializer.Serialize(entity, entityType);
+
+            command.CommandText = $$"""
+                                    INSERT INTO {{modelConfiguration.TableName}} (ID, MODEL) VALUES ($id, $json)
+                                    """;
+            command.Parameters.Clear();
+            command.Parameters.AddWithValue("$id", entity.GetKey().EnsureNotNull());
+            command.Parameters.AddWithValue("$json", json);
+
+            await command.ExecuteNonQueryAsync();
         }
     }
 }

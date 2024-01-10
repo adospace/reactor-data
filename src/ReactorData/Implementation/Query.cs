@@ -19,7 +19,7 @@ interface IObservableQuery
 
 class ObservableQuery<T> : IObservableQuery where T : class, IEntity
 {
-    class ObservableQueryCollection(ObservableQuery<T> owner, ObservableCollection<T> observableCollection) 
+    class ObservableQueryCollection(ObservableQuery<T> owner, ObservableRangeCollection<T> observableCollection) 
         : ReadOnlyObservableCollection<T>(observableCollection), IQuery<T>
     {
         //note: required to keep the owener alive
@@ -30,14 +30,14 @@ class ObservableQuery<T> : IObservableQuery where T : class, IEntity
 
     private readonly Func<IQueryable<T>, IQueryable<T>>? _predicate;
     
-    private readonly ObservableCollection<T> _collection;
+    private readonly ObservableRangeCollection<T> _collection;
 
     public ObservableQuery(ModelContext container, Func<IQueryable<T>, IQueryable<T>>? predicate = null)
     {
         _container = container;
         _predicate = predicate;
 
-        _collection = new ObservableCollection<T>(GetContainerList());
+        _collection = new ObservableRangeCollection<T>(GetContainerList());
         Query = new ObservableQueryCollection(this, _collection);
     }
 
@@ -67,52 +67,76 @@ class ObservableQuery<T> : IObservableQuery where T : class, IEntity
     }
 
     public static void SyncLists(
-        IList<T> existingList,
+        ObservableRangeCollection<T> existingList,
         IList<T> newList,
         Func<T, T, bool> areEqual,
         Func<T, bool> replaceItem)
     {
         int existingIndex = 0;
-        int newIndex = 0;
+        var itemsToAdd = new List<T>();
 
-        while (existingIndex < existingList.Count && newIndex < newList.Count)
+        foreach (var newItem in newList)
         {
-            if (areEqual(existingList[existingIndex], newList[newIndex]))
+            // Check if we've exceeded the bounds of the existing list; if so, add remaining new items
+            if (existingIndex >= existingList.Count)
             {
-                // The items are equal, move to the next item in both lists
-                if (replaceItem(newList[newIndex]))
-                {
-                    existingList[existingIndex] = newList[newIndex];
-                }
-                existingIndex++;
-                newIndex++;
+                itemsToAdd.Add(newItem);
+                continue;
             }
-            else if (existingList.Contains(newList[newIndex]))
+
+            // If the items match based on the equality function, move to the next item
+            if (areEqual(existingList[existingIndex], newItem))
             {
-                // The new item already exists later in the existing list; remove the current unmatched item in existing
+                if (itemsToAdd.Count != 0)
+                {
+                    existingList.InsertRange(existingIndex, itemsToAdd);
+                    existingIndex += itemsToAdd.Count;
+                    itemsToAdd.Clear();
+                }
+                
+                if (replaceItem(newItem))
+                {
+                    existingList[existingIndex] = newItem;
+                }
+
+                existingIndex++;
+                continue;
+            }
+
+            // If the existing item doesn't match and the new item is not found ahead,
+            // it means we need to remove the existing item
+            if (!newList.Skip(existingIndex).Any(x => areEqual(existingList[existingIndex], x)))
+            {
                 existingList.RemoveAt(existingIndex);
-                // Do not increment existingIndex since we removed the item at existingIndex, the next item is now at existingIndex
+                // Do not increment existingIndex as we removed the item at that index
+                continue;
+            }
+
+            // Otherwise, the new item should be inserted before the current existing item
+            itemsToAdd.Add(newItem);
+        }
+
+        // Add any items that are still pending to be added
+        if (itemsToAdd.Count != 0)
+        {
+            existingList.AddRange(itemsToAdd);
+        }
+
+        // If there are any remaining elements in the existing list that are not in the new list, remove them
+        var itemsToRemove = existingList.Skip(newList.Count).ToList();
+        if (itemsToRemove.Count != 0)
+        {
+            if (itemsToRemove.Count <= 10)
+            {
+                foreach (var itemToRemove in itemsToRemove)
+                {
+                    existingList.Remove(itemToRemove);
+                }    
             }
             else
             {
-                // The new item doesn't exist in the existing list, insert it
-                existingList.Insert(existingIndex, newList[newIndex]);
-                existingIndex++;
-                newIndex++;
+                existingList.RemoveRange(itemsToRemove);
             }
-        }
-
-        // Remove any leftover items from existing list that are not in new list
-        while (existingIndex < existingList.Count)
-        {
-            existingList.RemoveAt(existingIndex); // Note: remaining items are at the same index after removal
-        }
-
-        // Append any remaining new items that have not been processed yet
-        while (newIndex < newList.Count)
-        {
-            existingList.Add(newList[newIndex]);
-            newIndex++;
         }
     }
 
