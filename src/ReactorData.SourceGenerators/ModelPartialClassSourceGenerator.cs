@@ -86,6 +86,7 @@ public class ModelPartialClassSourceGenerator : ISourceGenerator
 
             string generatedSource = $$"""
                 using System;
+                using ReactorData;
 
                 #nullable enable
 
