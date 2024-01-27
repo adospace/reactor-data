@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using ReactorData.Tests.Models;
 using ReactorData.EFCore;
 using Microsoft.Data.Sqlite;
+using System.Reflection.Metadata;
 
 namespace ReactorData.Tests;
 
@@ -79,5 +80,29 @@ class BasicEfCoreStorageTests
         await _container.Flush();
 
         _container.GetEntityStatus(blog).Should().Be(EntityStatus.Detached);
+    }
+
+    [Test]
+    public async Task BasicOperationsOnEntityWithRelationshipUsingEfCoreStorage()
+    {
+        var director = new Director { Name = "Martin Scorsese" };
+        var movie = new Movie { Name = "The Irishman", Director = director };
+
+        _container.GetEntityStatus(movie).Should().Be(EntityStatus.Detached);
+
+        _container.Add(movie);
+
+        await _container.Flush();
+
+        _container.GetEntityStatus(movie).Should().Be(EntityStatus.Added);
+
+        _container.Set<Movie>().Single().Should().BeSameAs(movie);
+
+        _container.Save();
+
+        await _container.Flush();
+
+        _container.GetEntityStatus(movie).Should().Be(EntityStatus.Attached);
+
     }
 }

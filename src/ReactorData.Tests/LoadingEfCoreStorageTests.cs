@@ -41,7 +41,7 @@ class LoadingEfCoreStorageTests
 
         await _container.Flush();
 
-        _container.Set<Blog>().Count().Should().Be(0);
+        _container.Set<Blog>().Count.Should().Be(0);
 
         var firstBlog = new Blog { Title = "Stored Blog" };
 
@@ -142,5 +142,59 @@ class LoadingEfCoreStorageTests
         }
 
         _container.FindByKey<Blog>(1).Should().NotBeNull();
+    }
+
+
+    [Test]
+    public async Task TestContextWithRealatedEntitiesUsingEfCoreStorage()
+    {
+        _container.Load<Movie>();
+
+        await _container.Flush();
+
+        _container.Set<Movie>().Count.Should().Be(0);
+
+        var director = new Director { Name = "Martin Scorsese" };
+        var movie = new Movie { Name = "The Irishman", Director = director };
+
+
+        {
+            using var scope = _services.CreateScope();
+            using var dbContext = scope.ServiceProvider.GetRequiredService<TestDbContext>();
+
+            dbContext.Add(movie);
+
+            await dbContext.SaveChangesAsync();
+
+            movie = dbContext.Movies.First();
+        }
+
+        var query = _container.Query<Movie>();
+
+        bool addedEvent = false;
+        void checkAddedEvent(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            e.Action.Should().Be(NotifyCollectionChangedAction.Add);
+            e.NewItems.Should().NotBeNull();
+            movie.IsEquivalentTo((Movie)e.NewItems![0]!).Should().BeTrue();
+            e.NewStartingIndex.Should().Be(0);
+            e.OldItems.Should().BeNull();
+
+            addedEvent = true;
+        };
+
+        query.CollectionChanged += checkAddedEvent;
+
+        _container.Load<Movie>(x => x.Include(_ => _.Director));
+
+        await _container.Flush();
+
+        addedEvent.Should().BeTrue();
+
+        query.Count.Should().Be(1);
+
+        query.CollectionChanged -= checkAddedEvent;
+
+
     }
 }

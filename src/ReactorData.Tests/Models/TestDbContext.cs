@@ -11,6 +11,12 @@ class TestDbContext : DbContext
 {
     public DbSet<Blog> Blogs => Set<Blog>();
 
+    public DbSet<Movie> Movies => Set<Movie>();
+
+    public DbSet<Director> Directors => Set<Director>();
+
+    public TestDbContext() { }
+
     public TestDbContext(DbContextOptions<TestDbContext> options) : base(options)
     { }
 
