@@ -48,7 +48,7 @@ class Storage<T>(IServiceProvider serviceProvider) : IStorage where T : DbContex
 
         await Initialize(dbContext);
 
-        IQueryable<TEntity> query = dbContext.Set<TEntity>();
+        IQueryable<TEntity> query = dbContext.Set<TEntity>().AsNoTracking();
 
         if (queryFunction != null)
         {
@@ -60,27 +60,42 @@ class Storage<T>(IServiceProvider serviceProvider) : IStorage where T : DbContex
 
     public async Task Save(IEnumerable<StorageOperation> operations)
     {
-        using var serviceScope = _serviceProvider.CreateScope();
-        var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
 
-        await Initialize(dbContext);
-
-        foreach (var operation in operations)
+        try
         {
-            switch (operation)
-            {
-                case StorageAdd storageInsert:
-                    dbContext.AddRange(storageInsert.Entities);
-                    break;
-                case StorageUpdate storageUpdate:
-                    dbContext.UpdateRange(storageUpdate.Entities);
-                    break;
-                case StorageDelete storageDelete:
-                    dbContext.RemoveRange(storageDelete.Entities);
-                    break;
-            }
-        }
+            using var serviceScope = _serviceProvider.CreateScope();
+            var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
+            dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
 
-        await dbContext.SaveChangesAsync();
+            await Initialize(dbContext);
+
+            foreach (var operation in operations)
+            {
+                foreach (var entity in operation.Entities)
+                {
+                    dbContext.Attach(entity);
+
+                    switch (operation)
+                    {
+                        case StorageAdd storageInsert:
+                            dbContext.Entry(entity).State = EntityState.Added;                        
+                            break;
+                        case StorageUpdate storageUpdate:
+                            dbContext.Entry(entity).State = EntityState.Modified;
+                            break;
+                        case StorageDelete storageDelete:
+                            dbContext.Entry(entity).State = EntityState.Deleted;
+                            break;
+                    }
+
+                }
+            }
+
+            await dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            throw;
+        }
     }
 }

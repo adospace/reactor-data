@@ -9,14 +9,11 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
-using static System.Collections.Specialized.BitVector32;
 
 namespace ReactorData.Implementation;
 
 partial class ModelContext : IModelContext
 {
-
-
     private readonly ConcurrentDictionary<Type, Dictionary<object, IEntity>> _sets = [];
 
     private readonly List<OperationPending> _pendingQueue = [];
@@ -31,6 +28,7 @@ partial class ModelContext : IModelContext
     private readonly ConcurrentDictionary<Type, List<WeakReference<IObservableQuery>>> _queries = [];
 
     private readonly SemaphoreSlim _notificationSemaphore = new(1);
+    private readonly ModelContext? _owner;
 
     public ModelContext(IServiceProvider serviceProvider, ModelContextOptions options)
     {
@@ -39,6 +37,16 @@ partial class ModelContext : IModelContext
 
         Options = options;
         Options.ConfigureContext?.Invoke(this);
+    }
+
+    private ModelContext(ModelContext owner)
+    {
+        _owner = owner;
+
+        _operationsBlock = new ActionBlock<Operation>(DoWork);
+        //_storage = _owner._storage;
+
+        Options = _owner.Options;
     }
 
     public Action<Exception>? OnError { get; set; }
@@ -56,11 +64,14 @@ partial class ModelContext : IModelContext
 
         if (key != null)
         {
-            if (_pendingUpdates.TryGetValue(key, out var _))
+            var entityKey = (entity.GetType(), key);
+
+            if (_pendingUpdates.TryGetValue(entityKey, out var _))
             {
                 return EntityStatus.Updated;
             }
-            if (_pendingDeletes.TryGetValue(key, out var _))
+
+            if (_pendingDeletes.TryGetValue(entityKey, out var _))
             {
                 return EntityStatus.Deleted;
             }
@@ -91,6 +102,11 @@ partial class ModelContext : IModelContext
         }
     }
 
+    public IModelContext CreateScope()
+    {
+        return new ModelContext(this);
+    }
+
     public void Add(IEntity entity)
     {
         _operationsBlock.Post(new OperationAdd(entity));
@@ -105,19 +121,34 @@ partial class ModelContext : IModelContext
     {
         if (entity.GetKey() == null)
         {
-            throw new InvalidOperationException("Updating entity with uninitialized key");
+            if (!_pendingInserts.TryGetValue(entity, out var _))
+            {
+                throw new InvalidOperationException("Updating entity with uninitialized key");
+            }
+            return;
         }
 
         _operationsBlock.Post(new OperationUpdate(entity));
     }
     public void UpdateRange(IEnumerable<IEntity> entities)
     {
-        if (entities.Any(_ => _.GetKey() == null))
+        List<IEntity> entitiesToUpdate = [];
+
+        foreach (var entity in entities)
         {
-            throw new InvalidOperationException("Updating entity with uninitialized key");
+            if (entity.GetKey() == null)
+            {
+                if (!_pendingInserts.TryGetValue(entity, out var _))
+                {
+                    continue;
+                }
+                throw new InvalidOperationException("Updating entity with uninitialized key");
+            }
+
+            entitiesToUpdate.Add(entity);
         }
 
-        _operationsBlock.Post(new OperationUpdateRange(entities));
+        _operationsBlock.Post(new OperationUpdateRange(entitiesToUpdate));
     }
 
     public void Delete(IEntity entity)
@@ -135,12 +166,17 @@ partial class ModelContext : IModelContext
         _operationsBlock.Post(new OperationDeleteRange(entities));
     }
 
-    public void Load<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, Func<T, T, bool>? compareFunc = null) where T : class, IEntity
+    public void Load<T>(
+        Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, 
+        Func<T, T, bool>? compareFunc = null,
+        Action<IEnumerable<T>>? onLoad = null
+        ) where T : class, IEntity
     {
         _operationsBlock.Post(
             new OperationFetch(
                 loadFunction: storage => storage.Load(predicate?.Compile()),
-                compareFunc: compareFunc != null ? (storageEntity, localEntity) => compareFunc((T)storageEntity, (T)localEntity) : null));
+                compareFunc: compareFunc != null ? (storageEntity, localEntity) => compareFunc((T)storageEntity, (T)localEntity) : null,
+                onLoad: onLoad != null ? items => onLoad?.Invoke(items.Cast<T>()) : null));
     }
 
     public void Save()
@@ -153,7 +189,12 @@ partial class ModelContext : IModelContext
         var typeofT = typeof(T);
         var set = _sets.GetOrAdd(typeofT, []);
 
-        return set.Select(_=>_.Value).Cast<T>().Concat(_pendingQueue.OfType<OperationAdd>().Select(_=>_.Entity).Cast<T>()).ToList();
+        return set
+            .Select(_=>_.Value)
+            .Cast<T>()
+            .Concat(_pendingQueue.OfType<OperationAdd>().Select(_ => _.Entity).OfType<T>())
+            .Except(_pendingQueue.OfType<OperationDelete>().Select(_ => _.Entity).OfType<T>())
+            .ToList();
     }
 
     public async Task Flush()

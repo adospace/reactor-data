@@ -32,7 +32,12 @@ public interface IModelContext
 
     IQuery<T> Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null) where T : class, IEntity;
 
-    void Load<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, Func<T, T, bool>? compareFunc = null) where T : class, IEntity;
+    void Load<T>(
+        Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, 
+        Func<T, T, bool>? compareFunc = null,
+        Action<IEnumerable<T>>? onLoad = null) where T : class, IEntity;
+
+    IModelContext CreateScope();
 }
 
 public enum EntityStatus
