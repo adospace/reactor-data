@@ -37,7 +37,7 @@ public class BasicTests
 
         _container.GetEntityStatus(todo).Should().Be(EntityStatus.Added);
 
-        _container.Set<Todo>().Single().Should().BeSameAs(todo);
+        //_container.Set<Todo>().Single().Should().BeSameAs(todo);
 
         _container.Save();
 

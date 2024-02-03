@@ -61,7 +61,7 @@ class ObservableQuery<T> : IObservableQuery where T : class, IEntity
         var newItems = GetContainerList();
 
         static bool areEqual(T newItem, T existingItem)
-            => newItem.GetKey()?.Equals(existingItem.GetKey()) == true;
+            => newItem == existingItem || newItem.GetKey()?.Equals(existingItem.GetKey()) == true;
 
         SyncLists(_collection, newItems, areEqual, item => changedEntities?.Contains(item) == true);
     }

@@ -78,13 +78,16 @@ class Storage<T>(IServiceProvider serviceProvider) : IStorage where T : DbContex
                     switch (operation)
                     {
                         case StorageAdd storageInsert:
-                            dbContext.Entry(entity).State = EntityState.Added;                        
+                            dbContext.Entry(entity).State = EntityState.Added;
+                            //dbContext.Add(entity);
                             break;
                         case StorageUpdate storageUpdate:
                             dbContext.Entry(entity).State = EntityState.Modified;
+                            //dbContext.Update(entity);
                             break;
                         case StorageDelete storageDelete:
                             dbContext.Entry(entity).State = EntityState.Deleted;
+                            //dbContext.Remove(entity);
                             break;
                     }
 

@@ -47,7 +47,7 @@ class BasicSqliteStorageTests
 
         _container.GetEntityStatus(blog).Should().Be(EntityStatus.Added);
 
-        _container.Set<Blog>().Single().Should().BeSameAs(blog);
+        //_container.Set<Blog>().Single().Should().BeSameAs(blog);
 
         _container.Save();
 

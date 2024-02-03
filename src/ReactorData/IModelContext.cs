@@ -22,7 +22,7 @@ public interface IModelContext
 
     T? FindByKey<T>(object key) where T : class, IEntity;
 
-    IReadOnlyList<T> Set<T>() where T : class, IEntity;
+    //IReadOnlyList<T> Set<T>() where T : class, IEntity;
 
     Task Flush();
 
