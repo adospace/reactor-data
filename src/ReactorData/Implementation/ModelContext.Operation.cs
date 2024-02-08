@@ -5,184 +5,106 @@ namespace ReactorData.Implementation;
 
 partial class ModelContext
 {
-    abstract class Operation()
+    abstract record Operation()
     {
         internal abstract ValueTask Do(ModelContext context);
     };
 
-    //abstract class OperationPending() : Operation;
+    abstract record OperationPending(IEnumerable<IEntity> entities) : Operation
+    {
+        public IEnumerable<IEntity> Entities { get; } = entities;
+    }
 
-    //abstract class OperationSingle(IEntity entity) : OperationPending
-    //{
-    //    public IEntity Entity { get; } = entity;
-    //}
+    record OperationAdd(IEnumerable<IEntity> entities) : OperationPending(entities)
+    {
+        internal override ValueTask Do(ModelContext context)
+        {
+            foreach (var entity in entities)
+            {
+                var entityStatus = context.GetEntityStatus(entity);
 
-    //class OperationAdd(IEntity entity) : OperationSingle(entity)
-    //{
-    //    internal override ValueTask Do(ModelContext context)
-    //    {
-    //        if (context._pendingInserts.TryAdd(Entity, true))
-    //        {
-    //            context._pendingQueue.Add(this);
+                if (entityStatus != EntityStatus.Detached)
+                {
+                    continue;
+                }
 
-    //            context.NotifyChanges(Entity.GetType());
-    //        }
+                context._entityStatus[entity] = EntityStatus.Added;
 
-    //        return ValueTask.CompletedTask;
-    //    }
-    //}
+                context.NotifyChanges(entity.GetType());
 
-    //class OperationUpdate(IEntity entity) : OperationSingle(entity)
-    //{
-    //    internal override ValueTask Do(ModelContext context)
-    //    {
-    //        var entityKey = (Entity.GetType(), Entity.GetKey().EnsureNotNull());
+                context._operationQueue.Enqueue((entity, EntityStatus.Added));
+            }
 
-    //        if (context._pendingDeletes.TryRemove(entityKey, out _))
-    //        {
-    //            context._pendingQueue.RemoveFirst(_ => _ is OperationDelete operationDelete && operationDelete.Entity == Entity);
-    //            context.NotifyChanges(Entity.GetType());
-    //        }
+            context._pendingOperations.Enqueue(this);
+            return ValueTask.CompletedTask;
+        }
+    }
 
-    //        if (context._pendingUpdates.TryAdd(entityKey, Entity))
-    //        {
-    //            context._pendingQueue.Add(this);
-    //            context.NotifyChanges(Entity.GetType(), Entity);
-    //        }
+    record OperationUpdate(IEnumerable<IEntity> entities) : OperationPending(entities)
+    {
+        internal override ValueTask Do(ModelContext context)
+        {
+            foreach (var entity in entities)
+            {
+                var entityStatus = context.GetEntityStatus(entity);
 
-    //        return ValueTask.CompletedTask;
-    //    }
-    //}
+                if (entityStatus == EntityStatus.Detached)
+                {
+                    continue;
+                }
 
-    //class OperationDelete(IEntity entity) : OperationSingle(entity)
-    //{
-    //    internal override ValueTask Do(ModelContext context)
-    //    {
-    //        var entityKey = (Entity.GetType(), Entity.GetKey().EnsureNotNull());
-    //        if (context._pendingUpdates.TryGetValue(entityKey, out _))
-    //        {
-    //            context._pendingQueue.RemoveFirst(_ => _ is OperationUpdate operationUpdate && operationUpdate.Entity == Entity);
-    //        }
+                if (entityStatus != EntityStatus.Added)
+                {
+                    context._entityStatus[entity] = EntityStatus.Updated;
+                }
 
-    //        if (context._pendingDeletes.TryAdd(entityKey, Entity))
-    //        {
-    //            context._pendingQueue.Add(this);
-    //            context.NotifyChanges(Entity.GetType());
-    //        }
+                context.NotifyChanges(entity.GetType(), [entity]);
 
-    //        return ValueTask.CompletedTask;
-    //    }
-    //}
+                if (entityStatus != EntityStatus.Updated)
+                {
+                    context._operationQueue.Enqueue((entity, EntityStatus.Updated));
+                }
+            }
 
-    //class OperationAddRange(IEnumerable<IEntity> entities) : OperationPending
-    //{
-    //    public IEnumerable<IEntity> Entities { get; } = entities;
+            context._pendingOperations.Enqueue(this);
+            return ValueTask.CompletedTask;
+        }
+    }
 
-    //    internal override ValueTask Do(ModelContext context)
-    //    {
-    //        HashSet<Type> queryTypesToNofity = [];
-    //        List<IEntity> entitiesToAdd = [];
-    //        foreach (var entity in Entities)
-    //        {
-    //            if (context._pendingInserts.TryAdd(entity, true))
-    //            {
-    //                entitiesToAdd.Add(entity);
+    record OperationDelete(IEnumerable<IEntity> entities) : OperationPending(entities)
+    {
+        internal override ValueTask Do(ModelContext context)
+        {
+            foreach (var entity in entities)
+            {
+                var entityStatus = context.GetEntityStatus(entity);
 
-    //                queryTypesToNofity.Add(entity.GetType());
-    //            }
-    //        }
+                if (entityStatus == EntityStatus.Deleted)
+                {
+                    continue;
+                }
 
-    //        context._pendingQueue.Add(new OperationAddRange(entitiesToAdd));
+                if (entityStatus == EntityStatus.Added)
+                {
+                    context._entityStatus.Remove(entity, out var _);
+                }
+                else
+                {
+                    context._entityStatus[entity] = EntityStatus.Deleted;
+                }
 
-    //        foreach (var queryTypeToNofity in queryTypesToNofity)
-    //        {
-    //            context.NotifyChanges(queryTypeToNofity);
-    //        }
+                context.NotifyChanges(entity.GetType());
 
-    //        return ValueTask.CompletedTask;
-    //    }
-    //}
+                context._operationQueue.Enqueue((entity, EntityStatus.Deleted));
+            }
 
-    //class OperationUpdateRange(IEnumerable<IEntity> entities) : OperationPending
-    //{
-    //    public IEnumerable<IEntity> Entities { get; } = entities;
+            context._pendingOperations.Enqueue(this);
+            return ValueTask.CompletedTask;
 
-    //    internal override ValueTask Do(ModelContext context)
-    //    {
-    //        HashSet<Type> queryTypesToNofity = [];
-    //        List<IEntity> entitiesToUpdate = [];
+        }
+    }
 
-    //        foreach (var entity in Entities)
-    //        {
-    //            var entityKey = (entity.GetType(), entity.GetKey().EnsureNotNull());
-
-    //            if (context._pendingDeletes.TryRemove(entityKey, out _))
-    //            {
-    //                context._pendingQueue.RemoveFirst(_ => _ is OperationDelete operationDelete && operationDelete.Entity == entity);
-
-    //                queryTypesToNofity.Add(entity.GetType());
-    //            }
-
-    //            if (context._pendingUpdates.TryAdd(entityKey, entity))
-    //            {
-    //                entitiesToUpdate.Add(entity);
-
-    //                queryTypesToNofity.Add(entity.GetType());
-    //            }
-    //        }
-
-    //        context._pendingQueue.Add(new OperationUpdateRange(entitiesToUpdate));
-
-    //        foreach (var queryTypeToNofity in queryTypesToNofity)
-    //        {
-    //            context.NotifyChanges(queryTypeToNofity, entitiesToUpdate.Where(_ => _.GetType() == queryTypeToNofity).ToArray());
-    //        }
-
-    //        return ValueTask.CompletedTask;
-    //    }
-    //}
-
-    //class OperationDeleteRange(IEnumerable<IEntity> entities) : OperationPending
-    //{
-    //    public IEnumerable<IEntity> Entities { get; } = entities;
-
-    //    internal override ValueTask Do(ModelContext context)
-    //    {
-    //        HashSet<Type> queryTypesToNofity = [];
-    //        List<IEntity> entitiesToDelete = [];
-
-    //        foreach (var entity in Entities)
-    //        {
-    //            var entityKey = (entity.GetType(), entity.GetKey().EnsureNotNull());
-
-    //            if (context._pendingUpdates.TryGetValue(entityKey.EnsureNotNull(), out _))
-    //            {
-    //                context._pendingQueue.RemoveFirst(_ => _ is OperationUpdate operationUpdate && operationUpdate.Entity == entity);
-    //            }
-
-    //            if (context._pendingDeletes.TryAdd(entityKey, entity))
-    //            {
-    //                entitiesToDelete.Add(entity);
-
-    //                if (!queryTypesToNofity.Contains(entity.GetType()))
-    //                {
-    //                    queryTypesToNofity.Add(entity.GetType());
-    //                }
-    //            }
-    //        }
-
-    //        context._pendingQueue.Add(new OperationDeleteRange(entitiesToDelete));
-
-    //        foreach (var queryTypeToNofity in queryTypesToNofity)
-    //        {
-    //            context.NotifyChanges(queryTypeToNofity);
-    //        }
-
-    //        return ValueTask.CompletedTask;
-    //    }
-    //}
-
-    class OperationFetch(
+    record OperationFetch(
         Func<IStorage, Task<IEnumerable<IEntity>>> loadFunction, 
         Func<IEntity, IEntity, bool>? compareFunc = null,
         Action<IEnumerable<IEntity>>? onLoad = null) : Operation
@@ -212,7 +134,7 @@ partial class ModelContext
 
                 if (set.TryGetValue(entityKey, out var localEntity))
                 {
-                    if (CompareFunc?.Invoke(entity, localEntity) == true)
+                    if (CompareFunc == null || CompareFunc.Invoke(entity, localEntity) == true)
                     {
                         var entityChangesInSet = entitiesChanged.GetOrAdd(entityType, []);
                         entityChangesInSet.Add(entity);
@@ -254,80 +176,88 @@ partial class ModelContext
         }
     }
 
-    class OperationSave() : Operation
+    record OperationDiscardChanges() : Operation
+    {
+        internal override ValueTask Do(ModelContext context)
+        {
+            HashSet<Type> queryTypesToNofity = [];
+            HashSet<IEntity> changedEntities = [];
+            ConcurrentDictionary<Type, HashSet<IEntity>> entitiesChanged = [];
+
+            foreach (var (Entity, Status) in context._operationQueue)
+            {
+                var currentEntityStatus = context.GetEntityStatus(Entity);
+
+                //if (currentEntityStatus != Status)
+                //{
+                //    continue;
+                //}
+                changedEntities.Add(Entity);
+
+                var entityType = Entity.GetType();
+                queryTypesToNofity.Add(entityType);
+            }
+
+            context._operationQueue.Clear();
+            context._entityStatus.Clear();
+            context._pendingOperations.Clear();
+
+            foreach (var queryTypeToNofity in queryTypesToNofity)
+            {
+                context.NotifyChanges(queryTypeToNofity, changedEntities.ToArray());
+            }
+
+            return ValueTask.CompletedTask;
+        }
+    }
+
+    record OperationSave() : Operation
     {
         internal override async ValueTask Do(ModelContext context)
         {
-            if (context._owner != null)
+            var storage = context._owner?._storage ?? context._storage;
+            if (storage != null)
             {
-                System.Diagnostics.Debug.Assert(context._storage == null);
-
-                foreach (var (Entity, Status) in context._pendingQueue)
+                var listOfStorageOperation = new List<StorageOperation>();
+                foreach (var (Entity, Status) in context._operationQueue)
                 {
-                    //context._owner._pendingQueue.Enqueue(pendingOperation);
+                    var currentEntityStatus = context.GetEntityStatus(Entity);
+
+                    if (currentEntityStatus != Status)
+                    {
+                        continue;
+                    }
+
+                    System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status}");
+
                     switch (Status)
                     {
                         case EntityStatus.Added:
-                            context._owner.Add(Entity);
+                            listOfStorageOperation.Add(new StorageAdd(new[] { Entity }));
                             break;
                         case EntityStatus.Updated:
-                            context._owner.Update(Entity);
+                            listOfStorageOperation.Add(new StorageUpdate(new[] { Entity }));
                             break;
                         case EntityStatus.Deleted:
-                            context._owner.Delete(Entity);
+                            listOfStorageOperation.Add(new StorageDelete(new[] { Entity }));
                             break;
+                        //case OperationAddRange operationAddRange:
+                        //    listOfStorageOperation.Add(new StorageAdd(operationAddRange.Entities));
+                        //    break;
+                        //case OperationUpdateRange operationUpdateRange:
+                        //    listOfStorageOperation.Add(new StorageUpdate(operationUpdateRange.Entities));
+                        //    break;
+                        //case OperationDeleteRange operationDeleteRange:
+                        //    listOfStorageOperation.Add(new StorageDelete(operationDeleteRange.Entities));
+                        //    break;
                     }
                 }
 
-                context._owner.Save();
-
-                await context._owner.Flush();
-            }
-            else
-            {
-                if (context._storage != null)
-                {
-                    var listOfStorageOperation = new List<StorageOperation>();
-                    foreach (var (Entity, Status) in context._pendingQueue)
-                    {
-                        var currentEntityStatus = context.GetEntityStatus(Entity);
-
-                        if (currentEntityStatus != Status)
-                        {
-                            continue;
-                        }
-
-                        System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status}");
-
-                        switch (Status)
-                        {
-                            case EntityStatus.Added:
-                                listOfStorageOperation.Add(new StorageAdd(new[] { Entity }));
-                                break;
-                            case EntityStatus.Updated:
-                                listOfStorageOperation.Add(new StorageUpdate(new[] { Entity }));
-                                break;
-                            case EntityStatus.Deleted:
-                                listOfStorageOperation.Add(new StorageDelete(new[] { Entity }));
-                                break;
-                            //case OperationAddRange operationAddRange:
-                            //    listOfStorageOperation.Add(new StorageAdd(operationAddRange.Entities));
-                            //    break;
-                            //case OperationUpdateRange operationUpdateRange:
-                            //    listOfStorageOperation.Add(new StorageUpdate(operationUpdateRange.Entities));
-                            //    break;
-                            //case OperationDeleteRange operationDeleteRange:
-                            //    listOfStorageOperation.Add(new StorageDelete(operationDeleteRange.Entities));
-                            //    break;
-                        }
-                    }
-
-                    await context._storage.Save(listOfStorageOperation);
-                }
+                await storage.Save(listOfStorageOperation);
             }
 
             HashSet<Type> queryTypesToNofity = [];
-            foreach (var (Entity, Status) in context._pendingQueue)
+            foreach (var (Entity, Status) in context._operationQueue)
             {
                 var currentEntityStatus = context.GetEntityStatus(Entity);
 
@@ -347,17 +277,6 @@ partial class ModelContext
                             queryTypesToNofity.Add(entityType);
                         }
                         break;
-                    //case EntityStatus.Deleted:
-                    //    {
-                    //        foreach (var entity in operationAddRage.Entities)
-                    //        {
-                    //            var entityType = entity.GetType();
-                    //            var set = context._sets.GetOrAdd(entityType, []);
-                    //            set.Add(entity.GetKey().EnsureNotNull(), entity);
-                    //            queryTypesToNofity.Add(entityType);
-                    //        }
-                    //    }
-                    //    break;
                     case EntityStatus.Updated:
                         {
                             var entityType = Entity.GetType();
@@ -367,17 +286,6 @@ partial class ModelContext
                             queryTypesToNofity.Add(entityType);
                         }
                         break;
-                    //case OperationUpdateRange operationUpdateRange:
-                    //    {
-                    //        foreach (var entity in operationUpdateRange.Entities)
-                    //        {
-                    //            var entityType = entity.GetType();
-                    //            var set = context._sets.GetOrAdd(entityType, []);
-                    //            set[entity.GetKey().EnsureNotNull()] = entity;
-                    //            queryTypesToNofity.Add(entityType);
-                    //        }
-                    //    }
-                    //    break;
                     case EntityStatus.Deleted:
                         {
                             var set = context._sets.GetOrAdd(Entity.GetType(), []);
@@ -386,26 +294,12 @@ partial class ModelContext
                             queryTypesToNofity.Add(Entity.GetType());
                         }
                         break;
-                    //case OperationDeleteRange operationRemoveRange:
-                    //    {
-                    //        foreach (var entity in operationRemoveRange.Entities)
-                    //        {
-                    //            var entityType = entity.GetType();
-                    //            var set = context._sets.GetOrAdd(entityType, []);
-                    //            set.Remove(entity.GetKey().EnsureNotNull());
-
-                    //            queryTypesToNofity.Add(entityType);
-                    //        }
-                    //    }
-                    //    break;
                 }
             }
 
-            context._pendingQueue.Clear();
+            context._operationQueue.Clear();
             context._entityStatus.Clear();
-            //context._pendingInserts.Clear();
-            //context._pendingUpdates.Clear();
-            //context._pendingDeletes.Clear();
+            context._pendingOperations.Clear();
 
             foreach (var queryTypeToNofity in queryTypesToNofity)
             {
@@ -414,7 +308,7 @@ partial class ModelContext
         }
     }
 
-    class OperationFlush(AsyncAutoResetEvent signal) : Operation
+    record OperationFlush(AsyncAutoResetEvent signal) : Operation
     {
         public AsyncAutoResetEvent Signal { get; } = signal;
 
@@ -425,7 +319,4 @@ partial class ModelContext
             return ValueTask.CompletedTask;
         }
     }
-
-
-
 }

@@ -8,19 +8,17 @@ namespace ReactorData;
 
 public interface IModelContext
 {
-    void Add(IEntity entity);
+    void Add(params IEntity[] entities);
 
-    void AddRange(IEnumerable<IEntity> entity);
+    void Update(params IEntity[] entities);
 
-    void Update(IEntity entity);
-
-    void Delete(IEntity entity);
-
-    void DeleteRange(IEnumerable<IEntity> entity);
+    void Delete(params IEntity[] entities);
 
     void Save();
 
     T? FindByKey<T>(object key) where T : class, IEntity;
+
+    void DiscardChanges();
 
     //IReadOnlyList<T> Set<T>() where T : class, IEntity;
 

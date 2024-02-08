@@ -16,11 +16,11 @@ partial class ModelContext : IModelContext
 {
     private readonly ConcurrentDictionary<Type, Dictionary<object, IEntity>> _sets = [];
 
-    private readonly ConcurrentQueue<(IEntity Entity, EntityStatus Status)> _pendingQueue = [];
+    private readonly Queue<(IEntity Entity, EntityStatus Status)> _operationQueue = [];
+
+    private readonly Queue<OperationPending> _pendingOperations = [];
+
     private readonly ConcurrentDictionary<IEntity, EntityStatus> _entityStatus = [];
-    //private readonly ConcurrentDictionary<IEntity, bool> _pendingInserts = [];
-    //private readonly ConcurrentDictionary<object, IEntity> _pendingUpdates = [];
-    //private readonly ConcurrentDictionary<object, IEntity> _pendingDeletes = [];
 
     private readonly ActionBlock<Operation> _operationsBlock;
 
@@ -45,7 +45,6 @@ partial class ModelContext : IModelContext
         _owner = owner;
 
         _operationsBlock = new ActionBlock<Operation>(DoWork);
-        //_storage = _owner._storage;
 
         Options = _owner.Options;
     }
@@ -72,36 +71,6 @@ partial class ModelContext : IModelContext
         }
 
         return EntityStatus.Detached;
-
-        //if (_pendingInserts.TryGetValue(entity, out var _))
-        //{
-        //    return EntityStatus.Added;
-        //}
-        
-        //var key = entity.GetKey();
-
-        //if (key != null)
-        //{
-        //    var entityKey = (entity.GetType(), key);
-
-        //    if (_pendingUpdates.TryGetValue(entityKey, out var _))
-        //    {
-        //        return EntityStatus.Updated;
-        //    }
-
-        //    if (_pendingDeletes.TryGetValue(entityKey, out var _))
-        //    {
-        //        return EntityStatus.Deleted;
-        //    }
-
-        //    var set = _sets.GetOrAdd(entity.GetType(), []);
-        //    if (set.TryGetValue(key, out var _))
-        //    {
-        //        return EntityStatus.Attached;
-        //    }
-        //}
-
-        //return EntityStatus.Detached;
     }
 
     private async Task DoWork(Operation operation)
@@ -125,130 +94,19 @@ partial class ModelContext : IModelContext
         return new ModelContext(this);
     }
 
-    public void Add(IEntity entity)
+    public void Add(params IEntity[] entities)
     {
-        var entityStatus = GetEntityStatus(entity);
-
-        if (entityStatus != EntityStatus.Detached)
-        {
-            return;
-        }
-
-        _entityStatus.TryAdd(entity, EntityStatus.Added);
-
-        NotifyChanges(entity.GetType());
-
-        _pendingQueue.Enqueue((entity, EntityStatus.Added));
-
-        //_operationsBlock.Post(new OperationAdd(entity));
+        _operationsBlock.Post(new OperationAdd(entities));
     }
 
-    public void AddRange(IEnumerable<IEntity> entities)
+    public void Update(params IEntity[] entities)
     {
-        foreach (var entity in entities)
-        {
-            Add(entity);
-        }
-        //_operationsBlock.Post(new OperationAddRange(entities));
+        _operationsBlock.Post(new OperationUpdate(entities));
     }
 
-    public void Update(IEntity entity)
+    public void Delete(params IEntity[] entities)
     {
-        //if (entity.GetKey() == null)
-        //{
-        //    if (!_pendingInserts.TryGetValue(entity, out var _))
-        //    {
-        //        throw new InvalidOperationException("Updating entity with uninitialized key");
-        //    }
-        //    return;
-        //}
-
-        var entityStatus = GetEntityStatus(entity);
-
-        if (entityStatus == EntityStatus.Detached)
-        {
-            return;
-        }
-
-        if (entityStatus != EntityStatus.Added)
-        {
-            _entityStatus[entity] = EntityStatus.Updated;
-        }
-
-        NotifyChanges(entity.GetType(), [entity]);
-
-        if (entityStatus != EntityStatus.Updated)
-        {
-            _pendingQueue.Enqueue((entity, EntityStatus.Updated));
-        }
-
-        //_operationsBlock.Post(new OperationUpdate(entity));
-    }
-
-    public void UpdateRange(IEnumerable<IEntity> entities)
-    {
-        foreach (var entity in entities)
-        {
-            Update(entity);
-        }
-
-        //List<IEntity> entitiesToUpdate = [];
-
-        //foreach (var entity in entities)
-        //{
-        //    if (entity.GetKey() == null)
-        //    {
-        //        if (!_pendingInserts.TryGetValue(entity, out var _))
-        //        {
-        //            continue;
-        //        }
-        //        throw new InvalidOperationException("Updating entity with uninitialized key");
-        //    }
-
-        //    entitiesToUpdate.Add(entity);
-        //}
-
-        //_operationsBlock.Post(new OperationUpdateRange(entitiesToUpdate));
-    }
-
-    public void Delete(IEntity entity)
-    {
-        //if (entity.GetKey() == null)
-        //{
-        //    throw new InvalidOperationException("Deleting entity with uninitialized key");
-        //}
-
-        //_operationsBlock.Post(new OperationDelete(entity));
-
-        var entityStatus = GetEntityStatus(entity);
-
-        if (entityStatus == EntityStatus.Deleted)
-        {
-            return;
-        }
-
-        if (entityStatus == EntityStatus.Added)
-        {
-            _entityStatus.Remove(entity, out var _);
-        }
-        else
-        {
-            _entityStatus[entity] = EntityStatus.Deleted;
-        }        
-
-        NotifyChanges(entity.GetType());
-
-        _pendingQueue.Enqueue((entity, EntityStatus.Deleted));
-    }
-
-    public void DeleteRange(IEnumerable<IEntity> entities)
-    {
-        foreach (var entity in entities)
-        {
-            Delete(entity);
-        }
-
-        //_operationsBlock.Post(new OperationDeleteRange(entities));
+        _operationsBlock.Post(new OperationDelete(entities));
     }
 
     public void Load<T>(
@@ -279,10 +137,11 @@ partial class ModelContext : IModelContext
             .Cast<T>()
             .Concat(_entityStatus.Where(_ => _.Value == EntityStatus.Added).Select(_ => _.Key).OfType<T>())
             .Except(_entityStatus.Where(_ => _.Value == EntityStatus.Deleted).Select(_ => _.Key).OfType<T>())
-
-            //.Concat(_pendingQueue.OfType<OperationAdd>().Select(_ => _.Entity).OfType<T>())
-            //.Except(_pendingQueue.OfType<OperationDelete>().Select(_ => _.Entity).OfType<T>())
             .ToList();
+    }
+    public void DiscardChanges()
+    {
+        _operationsBlock.Post(new OperationDiscardChanges());
     }
 
     public async Task Flush()
@@ -318,9 +177,10 @@ partial class ModelContext : IModelContext
         return default;
     }
 
+
     private void NotifyChanges(Type typeOfEntity, params IEntity[] changedEntities)
     {
-        var queries = _queries.GetOrAdd(typeOfEntity, []);
+        var queries = _queries.SelectMany(_ => _.Value).ToList(); //.GetOrAdd(typeOfEntity, []);
 
         try
         {

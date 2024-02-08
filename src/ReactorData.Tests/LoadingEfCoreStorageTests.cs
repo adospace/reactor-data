@@ -195,6 +195,36 @@ class LoadingEfCoreStorageTests
 
         query.CollectionChanged -= checkAddedEvent;
 
+        var anotherMovie = new Movie { Name = "The Wolf of Wall Street", Director = director };
+
+        bool addedAnotherMovieEvent = false;
+        void checkAnotherMovieAddedEvent(object? sender, NotifyCollectionChangedEventArgs e)
+        {
+            e.Action.Should().Be(NotifyCollectionChangedAction.Add);
+            e.NewItems.Should().NotBeNull();
+            anotherMovie.IsEquivalentTo((Movie)e.NewItems![0]!).Should().BeTrue();
+            e.NewStartingIndex.Should().Be(1);
+            e.OldItems.Should().BeNull();
+
+            addedAnotherMovieEvent = true;
+        };
+
+        query.CollectionChanged += checkAnotherMovieAddedEvent;
+
+        _container.Add(anotherMovie);
+
+        await _container.Flush();
+
+        addedAnotherMovieEvent.Should().BeTrue();
+
+        query.Count.Should().Be(2);
+
+        query.CollectionChanged -= checkAnotherMovieAddedEvent;
+
+        _container.Save();
+
+        await _container.Flush();
+
 
     }
 }

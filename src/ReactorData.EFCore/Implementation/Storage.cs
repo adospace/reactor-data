@@ -48,14 +48,16 @@ class Storage<T>(IServiceProvider serviceProvider) : IStorage where T : DbContex
 
         await Initialize(dbContext);
 
-        IQueryable<TEntity> query = dbContext.Set<TEntity>().AsNoTracking();
+        IQueryable<TEntity> query = dbContext.Set<TEntity>();
 
         if (queryFunction != null)
         {
             query = queryFunction(query);
         }
 
-        return await query.ToListAsync();
+        await query.ToListAsync();
+
+        return dbContext.ChangeTracker.Entries().Select(_=>_.Entity).Cast<IEntity>().ToList();
     }
 
     public async Task Save(IEnumerable<StorageOperation> operations)

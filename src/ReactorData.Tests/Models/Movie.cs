@@ -15,7 +15,9 @@ partial class Movie
 
     public string? Description { get; set; }
 
-    public required Director Director { get; set; }
+    public int DirectorId { get; set; }
+
+    public Director? Director { get; set; }
 
     public bool IsEquivalentTo(Movie other)
     {
