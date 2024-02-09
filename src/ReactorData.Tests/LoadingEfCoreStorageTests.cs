@@ -130,7 +130,7 @@ class LoadingEfCoreStorageTests
 
             query.CollectionChanged += checkUpdatedEvent;
 
-            _container.Load<Blog>(query => query.Where(_ => _.Title.StartsWith("Stored")), forceReload: true);
+            _container.Load<Blog>(query => query.Where(_ => _.Title.StartsWith("Stored")), compareFunc: (b1, b2) => false);
 
             await _container.Flush();
 

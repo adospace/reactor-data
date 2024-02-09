@@ -126,6 +126,17 @@ partial class ModelContext
             HashSet<Type> queryTypesToNofity = [];
             ConcurrentDictionary<Type, HashSet<IEntity>> entitiesChanged = [];
 
+            if (forceReload)
+            {
+                foreach (var entity in entities)
+                {
+                    var entityType = entity.GetType();
+                    var set = context._sets.GetOrAdd(entityType, []);
+                    
+                    set.Clear();
+                }
+            }
+
             foreach (var entity in entities)
             {
                 var entityType = entity.GetType();
@@ -135,7 +146,7 @@ partial class ModelContext
 
                 if (set.TryGetValue(entityKey, out var localEntity))
                 {
-                    if (forceReload || CompareFunc?.Invoke(entity, localEntity) == false)
+                    if (CompareFunc?.Invoke(entity, localEntity) == false)
                     {
                         var entityChangesInSet = entitiesChanged.GetOrAdd(entityType, []);
                         entityChangesInSet.Add(entity);
@@ -153,13 +164,20 @@ partial class ModelContext
 
             foreach (var queryTypeToNofity in queryTypesToNofity)
             {
-                if (entitiesChanged.TryGetValue(queryTypeToNofity, out var entityChangesInSet))
+                if (forceReload)
                 {
-                    context.NotifyChanges(queryTypeToNofity, [.. entityChangesInSet]);
+                    context.NotifyChanges(queryTypeToNofity, forceReload: true);
                 }
                 else
                 {
-                    context.NotifyChanges(queryTypeToNofity);
+                    if (entitiesChanged.TryGetValue(queryTypeToNofity, out var entityChangesInSet))
+                    {
+                        context.NotifyChanges(queryTypeToNofity, [.. entityChangesInSet]);
+                    }
+                    else
+                    {
+                        context.NotifyChanges(queryTypeToNofity);
+                    }
                 }
             }
 

@@ -55,9 +55,9 @@ class Storage<T>(IServiceProvider serviceProvider) : IStorage where T : DbContex
             query = queryFunction(query);
         }
 
-        await query.ToListAsync();
+        return await query.ToListAsync();
 
-        return dbContext.ChangeTracker.Entries().Select(_=>_.Entity).Cast<IEntity>().ToList();
+        //return dbContext.ChangeTracker.Entries().Select(_=>_.Entity).Cast<IEntity>().ToList();
     }
 
     public async Task Save(IEnumerable<StorageOperation> operations)

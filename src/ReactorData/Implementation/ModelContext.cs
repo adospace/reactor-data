@@ -180,9 +180,9 @@ partial class ModelContext : IModelContext
     }
 
 
-    private void NotifyChanges(Type typeOfEntity, params IEntity[] changedEntities)
+    private void NotifyChanges(Type typeOfEntity, IEntity[]? changedEntities = null, bool forceReload = false)
     {
-        var queries = _queries.SelectMany(_ => _.Value).ToList(); //.GetOrAdd(typeOfEntity, []);
+        var queries = _queries.GetOrAdd(typeOfEntity, []);
 
         try
         {
@@ -192,7 +192,7 @@ partial class ModelContext : IModelContext
             {
                 if (queryReference.TryGetTarget(out var query))
                 {
-                    query.NotifyChanges(changedEntities);
+                    query.NotifyChanges(changedEntities, forceReload);
                 }
                 else
                 {

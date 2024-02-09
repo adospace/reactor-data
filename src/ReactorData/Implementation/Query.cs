@@ -14,7 +14,7 @@ namespace ReactorData.Implementation;
 
 interface IObservableQuery
 {
-    public abstract void NotifyChanges(IEntity[]? changedEntities);
+    public abstract void NotifyChanges(IEntity[]? changedEntities, bool forceReload = false);
 }
 
 class ObservableQuery<T> : IObservableQuery where T : class, IEntity
@@ -43,27 +43,34 @@ class ObservableQuery<T> : IObservableQuery where T : class, IEntity
 
     public IQuery<T> Query { get; }
 
-    public void NotifyChanges(IEntity[]? changedEntities)
+    public void NotifyChanges(IEntity[]? changedEntities = null, bool forceReload = false)
     {
         if (_container.Options.Dispatcher != null)
         {
-            _container.Options.Dispatcher.Invoke(() => InternalNotifyChanges(changedEntities));
+            _container.Options.Dispatcher.Invoke(() => InternalNotifyChanges(changedEntities, forceReload));
         }
         else
         {
-            InternalNotifyChanges(changedEntities);
+            InternalNotifyChanges(changedEntities, forceReload);
         }
     }
 
-    private void InternalNotifyChanges(IEntity[]? changedEntities)
+    private void InternalNotifyChanges(IEntity[]? changedEntities, bool forceReload)
     {
-        var changedEntitiesMap = changedEntities != null ? new HashSet<IEntity>(changedEntities) : null;
         var newItems = GetContainerList();
 
-        static bool areEqual(T newItem, T existingItem)
-            => newItem == existingItem || newItem.GetKey()?.Equals(existingItem.GetKey()) == true;
+        if (!forceReload)
+        {
+            var changedEntitiesMap = changedEntities != null ? new HashSet<IEntity>(changedEntities) : null;
+            static bool areEqual(T newItem, T existingItem)
+                => newItem == existingItem || newItem.GetKey()?.Equals(existingItem.GetKey()) == true;
 
-        SyncLists(_collection, newItems, areEqual, item => changedEntities?.Contains(item) == true);
+            SyncLists(_collection, newItems, areEqual, item => changedEntities?.Contains(item) == true);
+        }
+        else
+        {
+            _collection.ReplaceRange(newItems);
+        }
     }
 
     public static void SyncLists(
