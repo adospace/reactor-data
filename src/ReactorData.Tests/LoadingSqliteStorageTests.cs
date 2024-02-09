@@ -149,7 +149,7 @@ class LoadingSqliteStorageTests
 
             query.CollectionChanged += checkUpdatedEvent;
 
-            _container.Load<Blog>(query => query.Where(_ => _.Title.StartsWith("Stored")), (x1, x2) => x1.Title == x2.Title);
+            _container.Load<Blog>(query => query.Where(_ => _.Title.StartsWith("Stored")), forceReload: true);
 
             await _container.Flush();
 

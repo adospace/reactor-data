@@ -107,6 +107,7 @@ partial class ModelContext
     record OperationFetch(
         Func<IStorage, Task<IEnumerable<IEntity>>> loadFunction, 
         Func<IEntity, IEntity, bool>? compareFunc = null,
+        bool forceReload = false,
         Action<IEnumerable<IEntity>>? onLoad = null) : Operation
     {
         public Func<IStorage, Task<IEnumerable<IEntity>>> LoadFunction { get; } = loadFunction;
@@ -134,7 +135,7 @@ partial class ModelContext
 
                 if (set.TryGetValue(entityKey, out var localEntity))
                 {
-                    if (CompareFunc == null || CompareFunc.Invoke(entity, localEntity) == true)
+                    if (forceReload || CompareFunc?.Invoke(entity, localEntity) == false)
                     {
                         var entityChangesInSet = entitiesChanged.GetOrAdd(entityType, []);
                         entityChangesInSet.Add(entity);

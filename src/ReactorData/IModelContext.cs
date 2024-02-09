@@ -33,6 +33,7 @@ public interface IModelContext
     void Load<T>(
         Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, 
         Func<T, T, bool>? compareFunc = null,
+        bool forceReload = false,
         Action<IEnumerable<T>>? onLoad = null) where T : class, IEntity;
 
     IModelContext CreateScope();

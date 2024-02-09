@@ -112,6 +112,7 @@ partial class ModelContext : IModelContext
     public void Load<T>(
         Expression<Func<IQueryable<T>, IQueryable<T>>>? predicate = null, 
         Func<T, T, bool>? compareFunc = null,
+        bool forceReload = false,
         Action<IEnumerable<T>>? onLoad = null
         ) where T : class, IEntity
     {
@@ -119,6 +120,7 @@ partial class ModelContext : IModelContext
             new OperationFetch(
                 loadFunction: storage => storage.Load(predicate?.Compile()),
                 compareFunc: compareFunc != null ? (storageEntity, localEntity) => compareFunc((T)storageEntity, (T)localEntity) : null,
+                forceReload: forceReload,
                 onLoad: onLoad != null ? items => onLoad?.Invoke(items.Cast<T>()) : null));
     }
 
