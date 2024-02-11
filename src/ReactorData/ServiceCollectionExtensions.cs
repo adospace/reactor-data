@@ -10,6 +10,11 @@ namespace ReactorData;
 
 public static class ServiceCollectionExtensions
 {
+    /// <summary>
+    /// Add ReactorData services
+    /// </summary>
+    /// <param name="services">Service collection to modify</param>
+    /// <param name="configureAction">Uses this function to modify any options related to the <see cref="IModelContext"/> creation</param>
     public static void AddReactorData(this IServiceCollection services, Action<ModelContextOptions>? configureAction = null)
     {
         services.AddSingleton<IModelContext>(sp =>

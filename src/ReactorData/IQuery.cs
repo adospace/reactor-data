@@ -10,7 +10,10 @@ using System.Threading.Tasks;
 
 namespace ReactorData;
 
-
+/// <summary>
+/// Reactive query of entities that supports the <see cref="INotifyCollectionChanged"/> interface
+/// </summary>
+/// <typeparam name="T">Type of the entities monitored by the query</typeparam>
 public interface IQuery<T> : 
     ICollection<T>, 
     IEnumerable<T>, 

@@ -105,6 +105,7 @@ partial class ModelContext
     }
 
     record OperationFetch(
+        Type entityTypeToLoad,
         Func<IStorage, Task<IEnumerable<IEntity>>> loadFunction, 
         Func<IEntity, IEntity, bool>? compareFunc = null,
         bool forceReload = false,
@@ -126,8 +127,16 @@ partial class ModelContext
             HashSet<Type> queryTypesToNofity = [];
             ConcurrentDictionary<Type, HashSet<IEntity>> entitiesChanged = [];
 
+            queryTypesToNofity.Add(entityTypeToLoad);
+
             if (forceReload)
             {
+                var set = context._sets.GetOrAdd(entityTypeToLoad, []);
+                set.Clear();
+            }
+
+            if (forceReload)
+            { 
                 foreach (var entity in entities)
                 {
                     var entityType = entity.GetType();
@@ -260,15 +269,6 @@ partial class ModelContext
                         case EntityStatus.Deleted:
                             listOfStorageOperation.Add(new StorageDelete(new[] { Entity }));
                             break;
-                        //case OperationAddRange operationAddRange:
-                        //    listOfStorageOperation.Add(new StorageAdd(operationAddRange.Entities));
-                        //    break;
-                        //case OperationUpdateRange operationUpdateRange:
-                        //    listOfStorageOperation.Add(new StorageUpdate(operationUpdateRange.Entities));
-                        //    break;
-                        //case OperationDeleteRange operationDeleteRange:
-                        //    listOfStorageOperation.Add(new StorageDelete(operationDeleteRange.Entities));
-                        //    break;
                     }
                 }
 
