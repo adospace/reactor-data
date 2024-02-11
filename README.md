@@ -1,4 +1,7 @@
 # ReactorData
+
+[![Nuget](https://img.shields.io/nuget/v/ReactorData)]([https://www.nuget.org/packages/ReactorData])
+
 ReactorData is a fast, easy-to-use, low ceremony data container for your next .NET app.
 
 Designed after SwiftData, it helps developers to persist data in UI applications abstracting the process of reading/writing to and from the storage.
