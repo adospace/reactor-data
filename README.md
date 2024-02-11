@@ -1,6 +1,6 @@
 # ReactorData
 
-[![Nuget](https://img.shields.io/nuget/v/ReactorData)]([https://www.nuget.org/packages/Reactor.Maui](https://www.nuget.org/packages/ReactorData)) 
+[![Nuget](https://img.shields.io/nuget/v/ReactorData)]([https://www.nuget.org/packages/ReactorData])
 
 ReactorData is a fast, easy-to-use, low ceremony data container for your next .NET app.
 
