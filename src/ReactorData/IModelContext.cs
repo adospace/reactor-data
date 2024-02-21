@@ -20,12 +20,11 @@ public interface IModelContext
     void Add(params IEntity[] entities);
 
     /// <summary>
-    /// Updates one or more entities to the context
+    /// Replaces one entity in to the context
     /// </summary>
-    /// <param name="entities">Entities to update</param>
-    /// <remarks>Entities are marked with <see cref="EntityStatus.Updated"/> only when not already in the <see cref="EntityStatus.Added"/> status. To persist any change you have to call <see cref="Save"/></remarks>
-    //void Update(params IEntity[] entities);
-
+    /// <param name="oldEntity">Old entity to replace</param>
+    /// <param name="newEntity">New entity to put in the container</param>    
+    /// <remarks>Old entity is marked as <see cref="EntityStatus.Detached"/> while new entity is put in the container with status <see cref="EntityStatus.Updated"/>. To persist any change you have to call <see cref="Save"/></remarks>
     void Replace(IEntity oldEntity, IEntity newEntity);
 
     /// <summary>
@@ -100,6 +99,9 @@ public interface IModelContext
     IModelContext CreateScope();
 }
 
+/// <summary>
+/// Identify the status of an entity
+/// </summary>
 public enum EntityStatus
 {
     Detached,
@@ -107,4 +109,21 @@ public enum EntityStatus
     Added, 
     Updated, 
     Deleted
+}
+
+public static class ModelContextExtensions
+{
+    /// <summary>
+    /// Update one or more entities "in-place"
+    /// </summary>
+    /// <param name="modelContext">Context the contains the entity to update</param>
+    /// <param name="entities">Entities to update</param>
+    /// <remarks>Differently from the <see cref="IModelContext.Replace(IEntity, IEntity)"/> keeps the same entities already added to the container. Be aware that if you attached a query on a UI list like the .NET MAUI CollectionView you have to use the Replace function instead to see the items updated.</remarks>
+    public static void Update(this IModelContext modelContext, params IEntity[] entities)
+    {
+        foreach (var entity in entities)
+        {
+            modelContext.Replace(entity, entity);
+        }
+    }
 }
