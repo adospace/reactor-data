@@ -57,29 +57,31 @@ class BasicEfCoreStorageTests
 
         blog.Title = "My new blog modified";
 
-        _container.Update(blog);
-
-        await _container.Flush();
-
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Updated);
-
-        _container.Save();
-
-        await _container.Flush();
-
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Attached);
-
-        _container.Delete(blog);
-
-        await _container.Flush();
-
-        _container.GetEntityStatus(blog).Should().Be(EntityStatus.Deleted);
-
-        _container.Save();
+        var modifiedBlog = new Blog { Id = blog.Id, Title = "My new blog modified" };
+        _container.Replace(blog, modifiedBlog);
 
         await _container.Flush();
 
         _container.GetEntityStatus(blog).Should().Be(EntityStatus.Detached);
+        _container.GetEntityStatus(modifiedBlog).Should().Be(EntityStatus.Updated);
+
+        _container.Save();
+
+        await _container.Flush();
+
+        _container.GetEntityStatus(modifiedBlog).Should().Be(EntityStatus.Attached);
+
+        _container.Delete(modifiedBlog);
+
+        await _container.Flush();
+
+        _container.GetEntityStatus(modifiedBlog).Should().Be(EntityStatus.Deleted);
+
+        _container.Save();
+
+        await _container.Flush();
+
+        _container.GetEntityStatus(modifiedBlog).Should().Be(EntityStatus.Detached);
     }
 
     [Test]

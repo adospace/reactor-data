@@ -49,12 +49,16 @@ class Storage : IStorage
 
     public Storage(IServiceProvider serviceProvider, string connectionString, Action<StorageConfiguration>? configureAction = null)
     {
+        //SQLitePCL.Batteries_V2.Init();
+
         _serviceProvider = serviceProvider;
         _connectionString = connectionString;
         _configureAction = configureAction;
     }
     public Storage(IServiceProvider serviceProvider, SqliteConnection connection, Action<StorageConfiguration>? configureAction = null)
     {
+        //SQLitePCL.Batteries_V2.Init();
+
         _serviceProvider = serviceProvider;
         _connection = connection;
         _configureAction = configureAction;

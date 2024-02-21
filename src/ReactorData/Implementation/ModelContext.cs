@@ -18,7 +18,7 @@ partial class ModelContext : IModelContext
 
     private readonly Queue<(IEntity Entity, EntityStatus Status)> _operationQueue = [];
 
-    private readonly Queue<OperationPending> _pendingOperations = [];
+    //private readonly Queue<OperationPending> _pendingOperations = [];
 
     private readonly ConcurrentDictionary<IEntity, EntityStatus> _entityStatus = [];
 
@@ -64,9 +64,12 @@ partial class ModelContext : IModelContext
         if (key != null)
         {
             var set = _sets.GetOrAdd(entity.GetType(), []);
-            if (set.TryGetValue(key, out var _))
+            if (set.TryGetValue(key, out var attachedEntity))
             {
-                return EntityStatus.Attached;
+                if (entity == attachedEntity)
+                {
+                    return EntityStatus.Attached;
+                }
             }
         }
 
@@ -99,9 +102,13 @@ partial class ModelContext : IModelContext
         _operationsBlock.Post(new OperationAdd(entities));
     }
 
-    public void Update(params IEntity[] entities)
+    //public void Update(params IEntity[] entities)
+    //{
+    //    _operationsBlock.Post(new OperationUpdate(entities));
+    //}
+    public void Replace(IEntity oldEntiy, IEntity newEntity)
     {
-        _operationsBlock.Post(new OperationUpdate(entities));
+        _operationsBlock.Post(new OperationUpdate(oldEntiy, newEntity));
     }
 
     public void Delete(params IEntity[] entities)

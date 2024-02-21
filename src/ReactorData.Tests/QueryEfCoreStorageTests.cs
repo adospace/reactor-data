@@ -70,9 +70,7 @@ class QueryEfCoreStorageTests
 
             querySecond.CollectionChanged += checkNotCalledEvent;
 
-            firstBlog.Title = "(edited)" + firstBlog.Title;
-
-            _container.Update(firstBlog);
+            _container.Replace(firstBlog, new Blog { Id = firstBlog.Id, Title = "(edited)" + firstBlog.Title });
 
             _container.Save();
 
@@ -159,7 +157,7 @@ class QueryEfCoreStorageTests
 
             querySecond.CollectionChanged += checkAddedSecondQueryEvent;
 
-            _container.Update(firstBlog);
+            _container.Replace(firstBlog, firstBlog);
 
             _container.Save();
 
@@ -202,7 +200,7 @@ class QueryEfCoreStorageTests
 
             querySecond.CollectionChanged += checkNotCalledSecondQueryEvent;
 
-            _container.Update(firstBlog);
+            _container.Replace(firstBlog, firstBlog);
 
             _container.Save();
 

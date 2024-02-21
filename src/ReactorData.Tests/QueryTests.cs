@@ -68,7 +68,7 @@ class QueryTests
         {
             e.Action.Should().Be(NotifyCollectionChangedAction.Add);
             e.NewItems.Should().NotBeNull();
-            e.NewItems![0].Should().BeSameAs(todo);
+            e.NewItems![0].Should().BeEquivalentTo(new Todo { Title = todo.Title, Done = true });
             e.NewStartingIndex.Should().Be(0); //by default query order by key so here we have 0 as "Learn C#" is less than "Learn Python"
             e.OldItems.Should().BeNull();
 
@@ -78,9 +78,7 @@ class QueryTests
         query.CollectionChanged -= checkAddedEvent;
         query.CollectionChanged += checkAddedSecondEvent;
 
-        todo.Done = true;
-
-        _container.Update(todo);
+        _container.Replace(todo, new Todo { Title = todo.Title, Done = true });
 
         await _container.Flush();
 

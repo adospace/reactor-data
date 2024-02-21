@@ -24,7 +24,9 @@ public interface IModelContext
     /// </summary>
     /// <param name="entities">Entities to update</param>
     /// <remarks>Entities are marked with <see cref="EntityStatus.Updated"/> only when not already in the <see cref="EntityStatus.Added"/> status. To persist any change you have to call <see cref="Save"/></remarks>
-    void Update(params IEntity[] entities);
+    //void Update(params IEntity[] entities);
+
+    void Replace(IEntity oldEntity, IEntity newEntity);
 
     /// <summary>
     /// Delete one or more entities

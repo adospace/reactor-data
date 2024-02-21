@@ -45,30 +45,29 @@ public class BasicTests
 
         _container.GetEntityStatus(todo).Should().Be(EntityStatus.Attached);
 
-        todo.Done = true;
-
-        _container.Update(todo);
+        var modifiedTodo = new Todo { Title = todo.Title, Done = true };
+        _container.Replace(todo, modifiedTodo);
 
         await _container.Flush();
 
-        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Updated);
+        _container.GetEntityStatus(modifiedTodo).Should().Be(EntityStatus.Updated);
 
         _container.Save();
 
         await _container.Flush();
 
-        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Attached);
+        _container.GetEntityStatus(modifiedTodo).Should().Be(EntityStatus.Attached);
 
-        _container.Delete(todo);
+        _container.Delete(modifiedTodo);
 
         await _container.Flush();
 
-        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Deleted);
+        _container.GetEntityStatus(modifiedTodo).Should().Be(EntityStatus.Deleted);
 
         _container.Save();
 
         await _container.Flush();
 
-        _container.GetEntityStatus(todo).Should().Be(EntityStatus.Detached);
+        _container.GetEntityStatus(modifiedTodo).Should().Be(EntityStatus.Detached);
     }
 }
