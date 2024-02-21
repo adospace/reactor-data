@@ -62,10 +62,23 @@ class ObservableQuery<T> : IObservableQuery where T : class, IEntity
         if (!forceReload)
         {
             var changedEntitiesMap = changedEntities != null ? new HashSet<IEntity>(changedEntities) : null;
+            var changedEntitiesIdsMap = changedEntities != null ? new HashSet<object>(changedEntities.Where(_=>_.GetKey() != null).Select(_=>_.GetKey()!)) : null;
             static bool areEqual(T newItem, T existingItem)
                 => newItem == existingItem || newItem.GetKey()?.Equals(existingItem.GetKey()) == true;
 
-            SyncLists(_collection, newItems, areEqual, item => changedEntities?.Contains(item) == true);
+            SyncLists(_collection, newItems, areEqual, item =>
+            {
+                var itemKey = item.GetKey();
+                if (itemKey  != null)
+                {
+                    if (changedEntitiesIdsMap?.Contains(itemKey) == true)
+                    {
+                        return true;
+                    }
+                }
+
+                return changedEntities?.Contains(item) == true;
+            });
         }
         else
         {

@@ -14,7 +14,7 @@ jobs:
 
     env:
       Solution_Name: ./src/ReactorData.sln
-      Version: 1.0.7-beta
+      Version: 1.0.8-beta
 
     steps:
     - name: Checkout

@@ -48,9 +48,14 @@ partial class ModelContext
             {
                 var entityStatus = context.GetEntityStatus(entity);
 
-                if (entityStatus == EntityStatus.Detached)
+                if (entityStatus == EntityStatus.Attached)
                 {
-                    continue;
+                    var entityToUpdateKey = entity.GetKey().EnsureNotNull();
+
+                    var entityType = entity.GetType();
+                    var set = context._sets.GetOrAdd(entityType, []);
+
+                    set[entityToUpdateKey] = entity;
                 }
 
                 if (entityStatus != EntityStatus.Added)
