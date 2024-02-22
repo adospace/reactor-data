@@ -5,11 +5,11 @@
 /// </summary>
 public class ModelContextOptions
 {
-    /// <summary>
-    /// <see cref="IModelContext"/> calles this function when it needs to notify the UI of any change occurred to entities
-    /// </summary>
-    /// <remarks>The call is potentially executed in a background thread. Implementors should handel the case appriopriately and use the UI framework utilities to tunnel the called to the UI thread when required.</remarks>
-    public Action<Action>? Dispatcher { get; set; }
+    ///// <summary>
+    ///// <see cref="IModelContext"/> calles this function when it needs to notify the UI of any change occurred to entities
+    ///// </summary>
+    ///// <remarks>The call is potentially executed in a background thread. Implementors should handel the case appriopriately and use the UI framework utilities to tunnel the called to the UI thread when required.</remarks>
+    //public Action<Action>? Dispatcher { get; set; }
 
     /// <summary>
     /// This actions allows to confugure any <see cref="IModelContext"/> public properties just after is created

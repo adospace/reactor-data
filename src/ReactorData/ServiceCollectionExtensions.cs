@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using ReactorData.Implementation;
 using System;
 using System.Collections.Generic;
@@ -17,7 +18,7 @@ public static class ServiceCollectionExtensions
     /// <param name="configureAction">Uses this function to modify any options related to the <see cref="IModelContext"/> creation</param>
     public static void AddReactorData(this IServiceCollection services, Action<ModelContextOptions>? configureAction = null)
     {
-        services.AddSingleton<IModelContext>(sp =>
+        services.TryAddSingleton<IModelContext>(sp =>
         { 
             var options = new ModelContextOptions();
             configureAction?.Invoke(options);

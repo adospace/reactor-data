@@ -19,7 +19,7 @@ class BasicSqliteStorageTests
         _connection = new SqliteConnection("Filename=:memory:");
         _connection.Open();
 
-        serviceCollection.AddReactorDataWithSqlite(_connection, 
+        serviceCollection.AddReactorData(_connection, 
             configuration => configuration.Model<Blog>());
 
         _services = serviceCollection.BuildServiceProvider();

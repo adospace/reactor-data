@@ -97,6 +97,13 @@ public interface IModelContext
     /// </summary>
     /// <returns>The scoped context</returns>
     IModelContext CreateScope();
+
+    /// <summary>
+    /// Run background task for the context
+    /// </summary>
+    /// <param name="task">Task to execute in background</param>
+    /// <remarks>During the execution of the task, all the pending operations are suspended</remarks>
+    void RunBackgroundTask(Func<IModelContext, Task> task);
 }
 
 /// <summary>

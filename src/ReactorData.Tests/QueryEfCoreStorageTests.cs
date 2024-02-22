@@ -22,7 +22,7 @@ class QueryEfCoreStorageTests
         _connection = new SqliteConnection("Filename=:memory:");
         _connection.Open();
 
-        serviceCollection.AddReactorDataWithEfCore<TestDbContext>(options => options.UseSqlite(_connection));
+        serviceCollection.AddReactorData<TestDbContext>(options => options.UseSqlite(_connection));
 
         _services = serviceCollection.BuildServiceProvider();
         _container = _services.GetRequiredService<IModelContext>();

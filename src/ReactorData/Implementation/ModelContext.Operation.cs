@@ -216,9 +216,9 @@ partial class ModelContext
 
             if (OnLoad != null)
             {
-                if (context.Options.Dispatcher != null)
+                if (context.Dispatcher != null)
                 {
-                    context.Options.Dispatcher.Invoke(() => OnLoad.Invoke(entities));
+                    context.Dispatcher.Dispatch(() => OnLoad.Invoke(entities));
                 }
                 else
                 {
@@ -360,6 +360,14 @@ partial class ModelContext
             Signal.Set();
 
             return ValueTask.CompletedTask;
+        }
+    }
+
+    record OperationBackgroundTask(Func<IModelContext, Task> BackgroundTask) : Operation
+    {
+        internal override async ValueTask Do(ModelContext context)
+        {
+            await BackgroundTask(context);
         }
     }
 }

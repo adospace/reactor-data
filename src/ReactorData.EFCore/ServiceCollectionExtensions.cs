@@ -13,7 +13,7 @@ public static class ServiceCollectionExtensions
     /// <param name="services">Service collection to modify</param>
     /// <param name="optionsAction">Action called when the database context needs to be configured</param>
     /// <param name="modelContextConfigure">Action called when the <see cref="IModelContext"/> needs to be configured</param>
-    public static void AddReactorDataWithEfCore<T>(this IServiceCollection services, 
+    public static void AddReactorData<T>(this IServiceCollection services, 
         Action<DbContextOptionsBuilder>? optionsAction = null,
         Action<ModelContextOptions>? modelContextConfigure = null) where T : DbContext
     {

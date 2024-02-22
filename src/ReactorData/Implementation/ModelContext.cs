@@ -35,6 +35,7 @@ partial class ModelContext : IModelContext
     {
         _operationsBlock = new ActionBlock<Operation>(DoWork);
         _storage = serviceProvider.GetService<IStorage>();
+        Dispatcher = serviceProvider.GetService<IDispatcher>();
 
         Options = options;
         Options.ConfigureContext?.Invoke(this);
@@ -52,6 +53,8 @@ partial class ModelContext : IModelContext
     public Action<Exception>? OnError { get; set; }
 
     public ModelContextOptions Options { get; }
+
+    public IDispatcher? Dispatcher { get; }
 
     public EntityStatus GetEntityStatus(IEntity entity)
     {
@@ -159,6 +162,11 @@ partial class ModelContext : IModelContext
         var signalEvent = new AsyncAutoResetEvent();
         _operationsBlock.Post(new OperationFlush(signalEvent));
         await signalEvent.WaitAsync();
+    }
+
+    public void RunBackgroundTask(Func<IModelContext, Task> task)
+    {
+        _operationsBlock.Post(new OperationBackgroundTask(task));
     }
 
     public IQuery<T> Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicateExpression = null) where T : class, IEntity

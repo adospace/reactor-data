@@ -45,9 +45,9 @@ class ObservableQuery<T> : IObservableQuery where T : class, IEntity
 
     public void NotifyChanges(IEntity[]? changedEntities = null, bool forceReload = false)
     {
-        if (_container.Options.Dispatcher != null)
+        if (_container.Dispatcher != null)
         {
-            _container.Options.Dispatcher.Invoke(() => InternalNotifyChanges(changedEntities, forceReload));
+            _container.Dispatcher.Dispatch(() => InternalNotifyChanges(changedEntities, forceReload));
         }
         else
         {

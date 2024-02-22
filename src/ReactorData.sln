@@ -18,6 +18,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		..\.github\workflows\build-deploy.yml = ..\.github\workflows\build-deploy.yml
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ReactorData.Maui", "ReactorData.Maui\ReactorData.Maui.csproj", "{FFB3D7F9-AD6D-4CED-A8AB-CC931FCB55C1}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,6 +46,10 @@ Global
 		{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E2F648A0-8E73-4CE8-99B7-2AF62424DD5F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{FFB3D7F9-AD6D-4CED-A8AB-CC931FCB55C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{FFB3D7F9-AD6D-4CED-A8AB-CC931FCB55C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{FFB3D7F9-AD6D-4CED-A8AB-CC931FCB55C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{FFB3D7F9-AD6D-4CED-A8AB-CC931FCB55C1}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

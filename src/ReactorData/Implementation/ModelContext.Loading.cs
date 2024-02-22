@@ -25,9 +25,9 @@ public partial class ModelContext
                 var propertyChanged = PropertyChanged;
                 if (propertyChanged != null)
                 {
-                    if (Options.Dispatcher != null)
+                    if (Dispatcher != null)
                     {
-                        Options.Dispatcher(() => propertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoading))));
+                        Dispatcher.Dispatch(() => propertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsLoading))));
                     }
                     else
                     {
@@ -49,9 +49,9 @@ public partial class ModelContext
                 var propertyChanged = PropertyChanged;
                 if (propertyChanged != null)
                 {
-                    if (Options.Dispatcher != null)
+                    if (Dispatcher != null)
                     {
-                        Options.Dispatcher(() => propertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSaving))));
+                        Dispatcher.Dispatch(() => propertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(IsSaving))));
                     }
                     else
                     {
