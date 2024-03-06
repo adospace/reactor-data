@@ -1,5 +1,6 @@
 ﻿using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 
 namespace ReactorData.Implementation;
 
@@ -147,83 +148,92 @@ partial class ModelContext
                 return;
             }
 
-            var entities = await LoadFunction(storage);
-            HashSet<Type> queryTypesToNofity = [];
-            ConcurrentDictionary<Type, HashSet<IEntity>> entitiesChanged = [];
-
-            queryTypesToNofity.Add(entityTypeToLoad);
-
-            if (forceReload)
+            try
             {
-                var set = context._sets.GetOrAdd(entityTypeToLoad, []);
-                set.Clear();
-            }
+                context.IsLoading = true;
 
-            if (forceReload)
-            { 
+                var entities = await LoadFunction(storage);
+                HashSet<Type> queryTypesToNofity = [];
+                ConcurrentDictionary<Type, HashSet<IEntity>> entitiesChanged = [];
+
+                queryTypesToNofity.Add(entityTypeToLoad);
+
+                if (forceReload)
+                {
+                    var set = context._sets.GetOrAdd(entityTypeToLoad, []);
+                    set.Clear();
+                }
+
+                if (forceReload)
+                { 
+                    foreach (var entity in entities)
+                    {
+                        var entityType = entity.GetType();
+                        var set = context._sets.GetOrAdd(entityType, []);
+                    
+                        set.Clear();
+                    }
+                }
+
                 foreach (var entity in entities)
                 {
                     var entityType = entity.GetType();
                     var set = context._sets.GetOrAdd(entityType, []);
-                    
-                    set.Clear();
-                }
-            }
 
-            foreach (var entity in entities)
-            {
-                var entityType = entity.GetType();
-                var set = context._sets.GetOrAdd(entityType, []);
+                    var entityKey = entity.GetKey().EnsureNotNull();
 
-                var entityKey = entity.GetKey().EnsureNotNull();
-
-                if (set.TryGetValue(entityKey, out var localEntity))
-                {
-                    if (CompareFunc?.Invoke(entity, localEntity) == false)
+                    if (set.TryGetValue(entityKey, out var localEntity))
                     {
-                        var entityChangesInSet = entitiesChanged.GetOrAdd(entityType, []);
-                        entityChangesInSet.Add(entity);
-                    }
+                        if (CompareFunc?.Invoke(entity, localEntity) == false)
+                        {
+                            var entityChangesInSet = entitiesChanged.GetOrAdd(entityType, []);
+                            entityChangesInSet.Add(entity);
+                        }
 
-                    set[entityKey] = entity;
-                }
-                else
-                {
-                    set.Add(entityKey, entity);
-                }
-
-                queryTypesToNofity.Add(entityType);
-            }
-
-            foreach (var queryTypeToNofity in queryTypesToNofity)
-            {
-                if (forceReload)
-                {
-                    context.NotifyChanges(queryTypeToNofity, forceReload: true);
-                }
-                else
-                {
-                    if (entitiesChanged.TryGetValue(queryTypeToNofity, out var entityChangesInSet))
-                    {
-                        context.NotifyChanges(queryTypeToNofity, [.. entityChangesInSet]);
+                        set[entityKey] = entity;
                     }
                     else
                     {
-                        context.NotifyChanges(queryTypeToNofity);
+                        set.Add(entityKey, entity);
+                    }
+
+                    queryTypesToNofity.Add(entityType);
+                }
+
+                foreach (var queryTypeToNofity in queryTypesToNofity)
+                {
+                    if (forceReload)
+                    {
+                        context.NotifyChanges(queryTypeToNofity, forceReload: true);
+                    }
+                    else
+                    {
+                        if (entitiesChanged.TryGetValue(queryTypeToNofity, out var entityChangesInSet))
+                        {
+                            context.NotifyChanges(queryTypeToNofity, [.. entityChangesInSet]);
+                        }
+                        else
+                        {
+                            context.NotifyChanges(queryTypeToNofity);
+                        }
+                    }
+                }
+
+                if (OnLoad != null)
+                {
+                    if (context.Dispatcher != null)
+                    {
+                        context.Dispatcher.Dispatch(() => OnLoad.Invoke(entities));
+                    }
+                    else
+                    {
+                        OnLoad.Invoke(entities);
                     }
                 }
             }
-
-            if (OnLoad != null)
+            finally
             {
-                if (context.Dispatcher != null)
-                {
-                    context.Dispatcher.Dispatch(() => OnLoad.Invoke(entities));
-                }
-                else
-                {
-                    OnLoad.Invoke(entities);
-                }
+                context.IsLoading = false;
             }
         }
     }
@@ -268,9 +278,42 @@ partial class ModelContext
         internal override async ValueTask Do(ModelContext context)
         {
             var storage = context._owner?._storage ?? context._storage;
-            if (storage != null)
+
+            try
             {
-                var listOfStorageOperation = new List<StorageOperation>();
+                context.IsSaving = storage != null && context._operationQueue.Count > 0;
+                if (storage != null)
+                {
+                    var listOfStorageOperation = new List<StorageOperation>();
+                    foreach (var (Entity, Status) in context._operationQueue)
+                    {
+                        var currentEntityStatus = context.GetEntityStatus(Entity);
+
+                        if (currentEntityStatus != Status)
+                        {
+                            continue;
+                        }
+
+                        System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status}");
+
+                        switch (Status)
+                        {
+                            case EntityStatus.Added:
+                                listOfStorageOperation.Add(new StorageAdd(new[] { Entity }));
+                                break;
+                            case EntityStatus.Updated:
+                                listOfStorageOperation.Add(new StorageUpdate(new[] { Entity }));
+                                break;
+                            case EntityStatus.Deleted:
+                                listOfStorageOperation.Add(new StorageDelete(new[] { Entity }));
+                                break;
+                        }
+                    }
+
+                    await storage.Save(listOfStorageOperation);
+                }
+
+                HashSet<Type> queryTypesToNofity = [];
                 foreach (var (Entity, Status) in context._operationQueue)
                 {
                     var currentEntityStatus = context.GetEntityStatus(Entity);
@@ -280,73 +323,49 @@ partial class ModelContext
                         continue;
                     }
 
-                    System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status}");
-
                     switch (Status)
                     {
                         case EntityStatus.Added:
-                            listOfStorageOperation.Add(new StorageAdd(new[] { Entity }));
+                            {
+                                var entityType = Entity.GetType();
+                                var set = context._sets.GetOrAdd(entityType, []);
+                                set.Add(Entity.GetKey().EnsureNotNull(), Entity);
+
+                                queryTypesToNofity.Add(entityType);
+                            }
                             break;
                         case EntityStatus.Updated:
-                            listOfStorageOperation.Add(new StorageUpdate(new[] { Entity }));
+                            {
+                                var entityType = Entity.GetType();
+                                var set = context._sets.GetOrAdd(entityType, []);
+                                set[Entity.GetKey().EnsureNotNull()] = Entity;
+
+                                queryTypesToNofity.Add(entityType);
+                            }
                             break;
                         case EntityStatus.Deleted:
-                            listOfStorageOperation.Add(new StorageDelete(new[] { Entity }));
+                            {
+                                var set = context._sets.GetOrAdd(Entity.GetType(), []);
+                                set.Remove(Entity.GetKey().EnsureNotNull());
+
+                                queryTypesToNofity.Add(Entity.GetType());
+                            }
                             break;
                     }
                 }
 
-                await storage.Save(listOfStorageOperation);
-            }
+                context._operationQueue.Clear();
+                context._entityStatus.Clear();
+                //context._pendingOperations.Clear();
 
-            HashSet<Type> queryTypesToNofity = [];
-            foreach (var (Entity, Status) in context._operationQueue)
-            {
-                var currentEntityStatus = context.GetEntityStatus(Entity);
-
-                if (currentEntityStatus != Status)
+                foreach (var queryTypeToNofity in queryTypesToNofity)
                 {
-                    continue;
-                }
-
-                switch (Status)
-                {
-                    case EntityStatus.Added:
-                        {
-                            var entityType = Entity.GetType();
-                            var set = context._sets.GetOrAdd(entityType, []);
-                            set.Add(Entity.GetKey().EnsureNotNull(), Entity);
-
-                            queryTypesToNofity.Add(entityType);
-                        }
-                        break;
-                    case EntityStatus.Updated:
-                        {
-                            var entityType = Entity.GetType();
-                            var set = context._sets.GetOrAdd(entityType, []);
-                            set[Entity.GetKey().EnsureNotNull()] = Entity;
-
-                            queryTypesToNofity.Add(entityType);
-                        }
-                        break;
-                    case EntityStatus.Deleted:
-                        {
-                            var set = context._sets.GetOrAdd(Entity.GetType(), []);
-                            set.Remove(Entity.GetKey().EnsureNotNull());
-
-                            queryTypesToNofity.Add(Entity.GetType());
-                        }
-                        break;
+                    context.NotifyChanges(queryTypeToNofity);
                 }
             }
-
-            context._operationQueue.Clear();
-            context._entityStatus.Clear();
-            //context._pendingOperations.Clear();
-
-            foreach (var queryTypeToNofity in queryTypesToNofity)
+            finally
             {
-                context.NotifyChanges(queryTypeToNofity);
+                context.IsSaving = false;
             }
         }
     }

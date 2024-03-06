@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Threading.Tasks;
@@ -104,6 +105,22 @@ public interface IModelContext
     /// <param name="task">Task to execute in background</param>
     /// <remarks>During the execution of the task, all the pending operations are suspended</remarks>
     void RunBackgroundTask(Func<IModelContext, Task> task);
+
+    /// <summary>
+    /// Event raised on the UI thread when a property of the context changes (ie IsLoading or IsSaving)
+    /// </summary>
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    /// <summary>
+    /// True when the context is loading entities from the storage
+    /// </summary>
+    bool IsLoading { get; }
+
+    /// <summary>
+    /// True when the context is saving entities to the storage
+    /// </summary>
+    bool IsSaving { get; }
+
 }
 
 /// <summary>
@@ -133,4 +150,54 @@ public static class ModelContextExtensions
             modelContext.Replace(entity, entity);
         }
     }
+
+    /// <summary>
+    /// True when either <see cref="IModelContext.IsLoading"/> or <see cref="IModelContext.IsSaving"/> are true
+    /// </summary>
+    /// <param name="modelContext"></param>
+    /// <returns></returns>
+    public static bool IsBusy(this IModelContext modelContext)
+        => modelContext.IsLoading || modelContext.IsSaving;
+
+    ///// <summary>
+    ///// Action called when <see cref="IsBusy(IModelContext)"/> property changes
+    ///// </summary>
+    ///// <param name="modelContext">Model context</param>
+    ///// <param name="callback">Action to call</param>
+    //public static void OnIsBusyChanged(this IModelContext modelContext, Action<bool>? callback)
+    //    => modelContext.PropertyChanged += (s, args) =>
+    //    {
+    //        if (args.PropertyName == nameof(IModelContext.IsLoading) || args.PropertyName == nameof(IModelContext.IsSaving))
+    //        {
+    //            callback?.Invoke(modelContext.IsBusy());
+    //        }
+    //    };
+
+    ///// <summary>
+    ///// Action called when <see cref="IModelContext.IsLoading"/> property changes
+    ///// </summary>
+    ///// <param name="modelContext">Model context</param>
+    ///// <param name="callback">Action to call</param>
+    //public static void OnIsLoadingChanged(this IModelContext modelContext, Action<bool>? callback)
+    //    => modelContext.PropertyChanged += (s, args) =>
+    //    {
+    //        if (args.PropertyName == nameof(IModelContext.IsLoading))
+    //        {
+    //            callback?.Invoke(modelContext.IsLoading);
+    //        }
+    //    };
+
+    ///// <summary>
+    ///// Action called when <see cref="IModelContext.IsSaving"/> property changes
+    ///// </summary>
+    ///// <param name="modelContext">Model context</param>
+    ///// <param name="callback">Action to call</param>
+    //public static void OnIsSavingChanged(this IModelContext modelContext, Action<bool>? callback)
+    //    => modelContext.PropertyChanged += (s, args) =>
+    //    {
+    //        if (args.PropertyName == nameof(IModelContext.IsSaving))
+    //        {
+    //            callback?.Invoke(modelContext.IsSaving);
+    //        }
+    //    };
 }
