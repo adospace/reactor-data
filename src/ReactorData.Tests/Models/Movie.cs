@@ -21,6 +21,7 @@ partial class Movie
 
     public bool IsEquivalentTo(Movie other)
     {
-        return Id == other.Id && Name == other.Name && Description == other.Description && Director.IsEquivalentTo(other.Director);
+        return Id == other.Id && Name == other.Name && Description == other.Description 
+            && (Director == null && other.Director == null || (Director != null && other.Director != null && Director.IsEquivalentTo(other.Director)));
     }
 }

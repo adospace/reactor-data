@@ -13,11 +13,18 @@ using System.Threading.Tasks;
 namespace ReactorData.EFCore.Implementation;
 
 
-class Storage<T>(IServiceProvider serviceProvider, ILogger<Storage<T>> logger) : IStorage where T : DbContext
+class Storage<T> : IStorage where T : DbContext
 {
-    private readonly IServiceProvider _serviceProvider = serviceProvider;
+    private readonly IServiceProvider _serviceProvider;
+    private readonly ILogger<Storage<T>>? _logger;
     private readonly SemaphoreSlim _semaphore = new(1);
     private bool _initialized;
+
+    public Storage(IServiceProvider serviceProvider)
+    {
+        _serviceProvider = serviceProvider;
+        _logger = serviceProvider.GetService<ILogger<Storage<T>>>();
+    }
 
     private async ValueTask Initialize(T dbContext)
     {
@@ -35,17 +42,17 @@ class Storage<T>(IServiceProvider serviceProvider, ILogger<Storage<T>> logger) :
                 return;
             }
 
-            logger.LogTrace("Migrating context {DbContext}...", typeof(T));
+            _logger?.LogTrace("Migrating context {DbContext}...", typeof(T));
 
             await dbContext.Database.MigrateAsync();
 
-            logger.LogTrace("Context {DbContext} migrated", typeof(T));
+            _logger?.LogTrace("Context {DbContext} migrated", typeof(T));
 
             _initialized = true;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Exception raised when initializing the DbContext using migrations");
+            _logger?.LogError(ex, "Exception raised when initializing the DbContext using migrations");
         }
         finally
         {
@@ -73,7 +80,7 @@ class Storage<T>(IServiceProvider serviceProvider, ILogger<Storage<T>> logger) :
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Unable to load entities of type {EntityType}", typeof(TEntity));
+            _logger?.LogError(ex, "Unable to load entities of type {EntityType}", typeof(TEntity));
             return [];
             //throw;
         }
@@ -92,7 +99,7 @@ class Storage<T>(IServiceProvider serviceProvider, ILogger<Storage<T>> logger) :
 
             await Initialize(dbContext);
 
-            logger.LogTrace("Apply changes for {Entities} entities", operations.Count());
+            _logger?.LogTrace("Apply changes for {Entities} entities", operations.Count());
 
             foreach (var operation in operations)
             {
@@ -105,17 +112,17 @@ class Storage<T>(IServiceProvider serviceProvider, ILogger<Storage<T>> logger) :
                         case StorageAdd storageInsert:
                             dbContext.Entry(entity).State = EntityState.Added;
                             //dbContext.Add(entity);
-                            logger.LogTrace("Insert entity {EntityId} : {Entity}", entity.GetKey(), System.Text.Json.JsonSerializer.Serialize(entity));
+                            _logger?.LogTrace("Insert entity {EntityId} : {Entity}", entity.GetKey(), System.Text.Json.JsonSerializer.Serialize(entity));
                             break;
                         case StorageUpdate storageUpdate:
                             dbContext.Entry(entity).State = EntityState.Modified;
                             //dbContext.Update(entity);
-                            logger.LogTrace("Update entity {EntityId} : {Entity}", entity.GetKey(), System.Text.Json.JsonSerializer.Serialize(entity));
+                            _logger?.LogTrace("Update entity {EntityId} : {Entity}", entity.GetKey(), System.Text.Json.JsonSerializer.Serialize(entity));
                             break;
                         case StorageDelete storageDelete:
                             dbContext.Entry(entity).State = EntityState.Deleted;
                             //dbContext.Remove(entity);
-                            logger.LogTrace("Delete entity {EntityId} : {Entity}", entity.GetKey(), System.Text.Json.JsonSerializer.Serialize(entity));
+                            _logger?.LogTrace("Delete entity {EntityId} : {Entity}", entity.GetKey(), System.Text.Json.JsonSerializer.Serialize(entity));
                             break;
                     }
 
@@ -124,11 +131,11 @@ class Storage<T>(IServiceProvider serviceProvider, ILogger<Storage<T>> logger) :
 
             await dbContext.SaveChangesAsync();
 
-            logger.LogTrace("Apply changes for {Entities} entities completed", operations.Count());
+            _logger?.LogTrace("Apply changes for {Entities} entities completed", operations.Count());
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Saving changes to context resulted in an unhandled exception");
+            _logger?.LogError(ex, "Saving changes to context resulted in an unhandled exception");
             throw;
         }
     }
