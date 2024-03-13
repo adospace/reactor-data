@@ -32,6 +32,12 @@ partial class ModelContext
                 context._entityStatus[entity] = EntityStatus.Added;
 
                 context.NotifyChanges(entity.GetType());
+#if DEBUG
+                if (context._operationQueue.Any(_ => _.Entity.GetKey() == entity.GetKey()))
+                {
+                    System.Diagnostics.Debug.Assert(false);
+                }
+#endif
 
                 context._operationQueue.Enqueue((entity, EntityStatus.Added));
             }
@@ -51,6 +57,13 @@ partial class ModelContext
             {
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
+#if DEBUG
+                if (context._operationQueue.Any(_ => _.Entity.GetKey() == NewEntity.GetKey()))
+                {
+                    System.Diagnostics.Debug.Assert(false);
+                }
+#endif
+
                 context._operationQueue.Enqueue((NewEntity, EntityStatus.Updated));
 
                 context.NotifyChanges(NewEntity.GetType(), [NewEntity]);
@@ -66,6 +79,12 @@ partial class ModelContext
 
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
+#if DEBUG
+                if (context._operationQueue.Any(_ => _.Entity.GetKey() == NewEntity.GetKey()))
+                {
+                    System.Diagnostics.Debug.Assert(false);
+                }
+#endif
                 context._operationQueue.Enqueue((NewEntity, EntityStatus.Updated));
 
                 context.NotifyChanges(NewEntity.GetType(), [NewEntity]);
@@ -75,6 +94,12 @@ partial class ModelContext
                 context._entityStatus.Remove(OldEntity, out var _);
                 context._entityStatus[NewEntity] = EntityStatus.Added;
 
+#if DEBUG
+                if (context._operationQueue.Any(_ => _.Entity.GetKey() == NewEntity.GetKey()))
+                {
+                    System.Diagnostics.Debug.Assert(false);
+                }
+#endif
                 context._operationQueue.Enqueue((NewEntity, EntityStatus.Added));
 
                 context.NotifyChanges(NewEntity.GetType(), [NewEntity]);
@@ -84,6 +109,12 @@ partial class ModelContext
                 context._entityStatus.Remove(OldEntity, out var _);
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
+#if DEBUG
+                if (context._operationQueue.Any(_ => _.Entity.GetKey() == NewEntity.GetKey()))
+                {
+                    System.Diagnostics.Debug.Assert(false);
+                }
+#endif
                 context._operationQueue.Enqueue((NewEntity, EntityStatus.Updated));
 
                 context.NotifyChanges(NewEntity.GetType(), [NewEntity]);
@@ -118,7 +149,12 @@ partial class ModelContext
                     context._entityStatus[entity] = EntityStatus.Deleted;
 
                     context.NotifyChanges(entity.GetType());
-
+#if DEBUG
+                    if (context._operationQueue.Any(_ => _.Entity.GetKey() == entity.GetKey()))
+                    {
+                        System.Diagnostics.Debug.Assert(false);
+                    }
+#endif
                     context._operationQueue.Enqueue((entity, EntityStatus.Deleted));
                 }
             }
@@ -285,6 +321,7 @@ partial class ModelContext
                 if (storage != null)
                 {
                     var listOfStorageOperation = new List<StorageOperation>();
+                    var operationsAdded = new HashSet<object>();
                     foreach (var (Entity, Status) in context._operationQueue)
                     {
                         var currentEntityStatus = context.GetEntityStatus(Entity);
@@ -292,6 +329,18 @@ partial class ModelContext
                         if (currentEntityStatus != Status)
                         {
                             continue;
+                        }
+
+                        var key = Entity.GetKey();
+                        if (key != null)
+                        {
+                            if (operationsAdded.Contains(key))
+                            {
+                                System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status} (Key already added: {key}) ");
+                                continue;
+                            }
+
+                            operationsAdded.Add(key);
                         }
 
                         System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status}");

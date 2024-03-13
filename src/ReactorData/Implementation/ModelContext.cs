@@ -47,6 +47,7 @@ partial class ModelContext : IModelContext
 
         _operationsBlock = new ActionBlock<Operation>(DoWork);
 
+        Dispatcher = _owner.Dispatcher;
         Options = _owner.Options;
     }
 
