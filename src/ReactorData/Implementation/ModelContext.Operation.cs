@@ -58,7 +58,7 @@ partial class ModelContext
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
 #if DEBUG
-                if (context._operationQueue.Any(_ => _.Entity.GetKey() == NewEntity.GetKey()))
+                if (context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
                 {
                     System.Diagnostics.Debug.Assert(false);
                 }
@@ -80,7 +80,7 @@ partial class ModelContext
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
 #if DEBUG
-                if (context._operationQueue.Any(_ => _.Entity.GetKey() == NewEntity.GetKey()))
+                if (context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
                 {
                     System.Diagnostics.Debug.Assert(false);
                 }
@@ -95,7 +95,7 @@ partial class ModelContext
                 context._entityStatus[NewEntity] = EntityStatus.Added;
 
 #if DEBUG
-                if (context._operationQueue.Any(_ => _.Entity.GetKey() == NewEntity.GetKey()))
+                if (!context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
                 {
                     System.Diagnostics.Debug.Assert(false);
                 }
@@ -110,7 +110,7 @@ partial class ModelContext
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
 #if DEBUG
-                if (context._operationQueue.Any(_ => _.Entity.GetKey() == NewEntity.GetKey()))
+                if (!context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
                 {
                     System.Diagnostics.Debug.Assert(false);
                 }
@@ -150,7 +150,7 @@ partial class ModelContext
 
                     context.NotifyChanges(entity.GetType());
 #if DEBUG
-                    if (context._operationQueue.Any(_ => _.Entity.GetKey() == entity.GetKey()))
+                    if (!context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), entity.GetKey())))
                     {
                         System.Diagnostics.Debug.Assert(false);
                     }
@@ -348,13 +348,13 @@ partial class ModelContext
                         switch (Status)
                         {
                             case EntityStatus.Added:
-                                listOfStorageOperation.Add(new StorageAdd(new[] { Entity }));
+                                listOfStorageOperation.Add(new StorageAdd([Entity]));
                                 break;
                             case EntityStatus.Updated:
-                                listOfStorageOperation.Add(new StorageUpdate(new[] { Entity }));
+                                listOfStorageOperation.Add(new StorageUpdate([Entity]));
                                 break;
                             case EntityStatus.Deleted:
-                                listOfStorageOperation.Add(new StorageDelete(new[] { Entity }));
+                                listOfStorageOperation.Add(new StorageDelete([Entity]));
                                 break;
                         }
                     }
@@ -378,7 +378,8 @@ partial class ModelContext
                             {
                                 var entityType = Entity.GetType();
                                 var set = context._sets.GetOrAdd(entityType, []);
-                                set.Add(Entity.GetKey().EnsureNotNull(), Entity);
+                                //set.Add(Entity.GetKey().EnsureNotNull(), Entity);
+                                set[Entity.GetKey().EnsureNotNull()] = Entity;
 
                                 queryTypesToNofity.Add(entityType);
                             }
