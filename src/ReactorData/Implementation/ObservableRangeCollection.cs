@@ -36,6 +36,12 @@ class ObservableRangeCollection<T> : ObservableCollection<T>
     {
     }
 
+    //protected override void OnCollectionChanged(NotifyCollectionChangedEventArgs e)
+    //{
+    //    System.Diagnostics.Debug.WriteLine($"Action:{e.Action} NewStartingIndex:{e.NewStartingIndex} OldStartingIndex:{e.OldStartingIndex}");
+    //    base.OnCollectionChanged(e);
+    //}
+
     /// <summary> 
     /// Adds the elements of the specified collection to the end of the ObservableCollection(Of T). 
     /// </summary> 

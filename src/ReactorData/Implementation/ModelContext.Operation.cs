@@ -33,10 +33,10 @@ partial class ModelContext
 
                 context.NotifyChanges(entity.GetType());
 #if DEBUG
-                if (context._operationQueue.Any(_ => _.Entity.GetKey() == entity.GetKey()))
-                {
-                    System.Diagnostics.Debug.Assert(false);
-                }
+                //if (context._operationQueue.Any(_ => _.Entity.GetKey() == entity.GetKey()))
+                //{
+                //    System.Diagnostics.Debug.Assert(false);
+                //}
 #endif
 
                 context._operationQueue.Enqueue((entity, EntityStatus.Added));
@@ -58,10 +58,10 @@ partial class ModelContext
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
 #if DEBUG
-                if (context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
-                {
-                    System.Diagnostics.Debug.Assert(false);
-                }
+                //if (context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
+                //{
+                //    System.Diagnostics.Debug.Assert(false);
+                //}
 #endif
 
                 context._operationQueue.Enqueue((NewEntity, EntityStatus.Updated));
@@ -80,10 +80,10 @@ partial class ModelContext
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
 #if DEBUG
-                if (context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
-                {
-                    System.Diagnostics.Debug.Assert(false);
-                }
+                //if (context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
+                //{
+                //    System.Diagnostics.Debug.Assert(false);
+                //}
 #endif
                 context._operationQueue.Enqueue((NewEntity, EntityStatus.Updated));
 
@@ -150,10 +150,10 @@ partial class ModelContext
 
                     context.NotifyChanges(entity.GetType());
 #if DEBUG
-                    if (!context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), entity.GetKey())))
-                    {
-                        System.Diagnostics.Debug.Assert(false);
-                    }
+                    //if (!context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), entity.GetKey())))
+                    //{
+                    //    System.Diagnostics.Debug.Assert(false);
+                    //}
 #endif
                     context._operationQueue.Enqueue((entity, EntityStatus.Deleted));
                 }
