@@ -130,10 +130,10 @@ partial class ModelContext : IModelContext
         _operationsBlock.Post(
             new OperationFetch(
                 typeof(T),
-                loadFunction: storage => storage.Load(predicate?.Compile()),
-                compareFunc: compareFunc != null ? (storageEntity, localEntity) => compareFunc((T)storageEntity, (T)localEntity) : null,
-                forceReload: forceReload,
-                onLoad: onLoad != null ? items => onLoad?.Invoke(items.Cast<T>()) : null));
+                LoadFunction: storage => storage.Load(predicate?.Compile()),
+                CompareFunc: compareFunc != null ? (storageEntity, localEntity) => compareFunc((T)storageEntity, (T)localEntity) : null,
+                ForceReload: forceReload,
+                OnLoad: onLoad != null ? items => onLoad?.Invoke(items.Cast<T>()) : null));
     }
 
     public void Save()

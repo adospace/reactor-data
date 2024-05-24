@@ -159,45 +159,4 @@ public static class ModelContextExtensions
     public static bool IsBusy(this IModelContext modelContext)
         => modelContext.IsLoading || modelContext.IsSaving;
 
-    ///// <summary>
-    ///// Action called when <see cref="IsBusy(IModelContext)"/> property changes
-    ///// </summary>
-    ///// <param name="modelContext">Model context</param>
-    ///// <param name="callback">Action to call</param>
-    //public static void OnIsBusyChanged(this IModelContext modelContext, Action<bool>? callback)
-    //    => modelContext.PropertyChanged += (s, args) =>
-    //    {
-    //        if (args.PropertyName == nameof(IModelContext.IsLoading) || args.PropertyName == nameof(IModelContext.IsSaving))
-    //        {
-    //            callback?.Invoke(modelContext.IsBusy());
-    //        }
-    //    };
-
-    ///// <summary>
-    ///// Action called when <see cref="IModelContext.IsLoading"/> property changes
-    ///// </summary>
-    ///// <param name="modelContext">Model context</param>
-    ///// <param name="callback">Action to call</param>
-    //public static void OnIsLoadingChanged(this IModelContext modelContext, Action<bool>? callback)
-    //    => modelContext.PropertyChanged += (s, args) =>
-    //    {
-    //        if (args.PropertyName == nameof(IModelContext.IsLoading))
-    //        {
-    //            callback?.Invoke(modelContext.IsLoading);
-    //        }
-    //    };
-
-    ///// <summary>
-    ///// Action called when <see cref="IModelContext.IsSaving"/> property changes
-    ///// </summary>
-    ///// <param name="modelContext">Model context</param>
-    ///// <param name="callback">Action to call</param>
-    //public static void OnIsSavingChanged(this IModelContext modelContext, Action<bool>? callback)
-    //    => modelContext.PropertyChanged += (s, args) =>
-    //    {
-    //        if (args.PropertyName == nameof(IModelContext.IsSaving))
-    //        {
-    //            callback?.Invoke(modelContext.IsSaving);
-    //        }
-    //    };
 }

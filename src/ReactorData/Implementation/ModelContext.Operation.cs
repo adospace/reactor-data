@@ -32,17 +32,10 @@ partial class ModelContext
                 context._entityStatus[entity] = EntityStatus.Added;
 
                 context.NotifyChanges(entity.GetType());
-#if DEBUG
-                //if (context._operationQueue.Any(_ => _.Entity.GetKey() == entity.GetKey()))
-                //{
-                //    System.Diagnostics.Debug.Assert(false);
-                //}
-#endif
 
                 context._operationQueue.Enqueue((entity, EntityStatus.Added));
             }
 
-            //context._pendingOperations.Enqueue(this);
             return ValueTask.CompletedTask;
         }
     }
@@ -56,13 +49,6 @@ partial class ModelContext
             if (oldEntityStatus == EntityStatus.Detached)
             {
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
-
-#if DEBUG
-                //if (context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
-                //{
-                //    System.Diagnostics.Debug.Assert(false);
-                //}
-#endif
 
                 context._operationQueue.Enqueue((NewEntity, EntityStatus.Updated));
 
@@ -79,12 +65,6 @@ partial class ModelContext
 
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
-#if DEBUG
-                //if (context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
-                //{
-                //    System.Diagnostics.Debug.Assert(false);
-                //}
-#endif
                 context._operationQueue.Enqueue((NewEntity, EntityStatus.Updated));
 
                 context.NotifyChanges(NewEntity.GetType(), [NewEntity]);
@@ -132,8 +112,7 @@ partial class ModelContext
             {
                 var entityStatus = context.GetEntityStatus(entity);
 
-                if (entityStatus == EntityStatus.Deleted ||
-                    entityStatus == EntityStatus.Detached)
+                if (entityStatus == EntityStatus.Deleted)
                 {
                     continue;
                 }
@@ -149,32 +128,26 @@ partial class ModelContext
                     context._entityStatus[entity] = EntityStatus.Deleted;
 
                     context.NotifyChanges(entity.GetType());
-#if DEBUG
-                    //if (!context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), entity.GetKey())))
-                    //{
-                    //    System.Diagnostics.Debug.Assert(false);
-                    //}
-#endif
+
                     context._operationQueue.Enqueue((entity, EntityStatus.Deleted));
                 }
             }
 
-            //context._pendingOperations.Enqueue(this);
             return ValueTask.CompletedTask;
 
         }
     }
 
     record OperationFetch(
-        Type entityTypeToLoad,
-        Func<IStorage, Task<IEnumerable<IEntity>>> loadFunction, 
-        Func<IEntity, IEntity, bool>? compareFunc = null,
-        bool forceReload = false,
-        Action<IEnumerable<IEntity>>? onLoad = null) : Operation
+        Type EntityTypeToLoad,
+        Func<IStorage, Task<IEnumerable<IEntity>>> LoadFunction, 
+        Func<IEntity, IEntity, bool>? CompareFunc = null,
+        bool ForceReload = false,
+        Action<IEnumerable<IEntity>>? OnLoad = null) : Operation
     {
-        public Func<IStorage, Task<IEnumerable<IEntity>>> LoadFunction { get; } = loadFunction;
-        public Func<IEntity, IEntity, bool>? CompareFunc { get; } = compareFunc;
-        public Action<IEnumerable<IEntity>>? OnLoad { get; } = onLoad;
+        public Func<IStorage, Task<IEnumerable<IEntity>>> LoadFunction { get; } = LoadFunction;
+        public Func<IEntity, IEntity, bool>? CompareFunc { get; } = CompareFunc;
+        public Action<IEnumerable<IEntity>>? OnLoad { get; } = OnLoad;
 
         internal override async ValueTask Do(ModelContext context)
         {
@@ -192,15 +165,15 @@ partial class ModelContext
                 HashSet<Type> queryTypesToNofity = [];
                 ConcurrentDictionary<Type, HashSet<IEntity>> entitiesChanged = [];
 
-                queryTypesToNofity.Add(entityTypeToLoad);
+                queryTypesToNofity.Add(EntityTypeToLoad);
 
-                if (forceReload)
+                if (ForceReload)
                 {
-                    var set = context._sets.GetOrAdd(entityTypeToLoad, []);
+                    var set = context._sets.GetOrAdd(EntityTypeToLoad, []);
                     set.Clear();
                 }
 
-                if (forceReload)
+                if (ForceReload)
                 { 
                     foreach (var entity in entities)
                     {
@@ -238,7 +211,7 @@ partial class ModelContext
 
                 foreach (var queryTypeToNofity in queryTypesToNofity)
                 {
-                    if (forceReload)
+                    if (ForceReload)
                     {
                         context.NotifyChanges(queryTypeToNofity, forceReload: true);
                     }
@@ -284,12 +257,6 @@ partial class ModelContext
 
             foreach (var (Entity, Status) in context._operationQueue)
             {
-                var currentEntityStatus = context.GetEntityStatus(Entity);
-
-                //if (currentEntityStatus != Status)
-                //{
-                //    continue;
-                //}
                 changedEntities.Add(Entity);
 
                 var entityType = Entity.GetType();
@@ -298,7 +265,6 @@ partial class ModelContext
 
             context._operationQueue.Clear();
             context._entityStatus.Clear();
-            //context._pendingOperations.Clear();
 
             foreach (var queryTypeToNofity in queryTypesToNofity)
             {
@@ -406,7 +372,6 @@ partial class ModelContext
 
                 context._operationQueue.Clear();
                 context._entityStatus.Clear();
-                //context._pendingOperations.Clear();
 
                 foreach (var queryTypeToNofity in queryTypesToNofity)
                 {
@@ -420,9 +385,9 @@ partial class ModelContext
         }
     }
 
-    record OperationFlush(AsyncAutoResetEvent signal) : Operation
+    record OperationFlush(AsyncAutoResetEvent Signal) : Operation
     {
-        public AsyncAutoResetEvent Signal { get; } = signal;
+        public AsyncAutoResetEvent Signal { get; } = Signal;
 
         internal override ValueTask Do(ModelContext context)
         {
