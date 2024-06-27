@@ -203,7 +203,7 @@ partial class ModelContext
                     }
                     else
                     {
-                        set.Add(entityKey, entity);
+                        set.TryAdd(entityKey, entity);
                     }
 
                     queryTypesToNofity.Add(entityType);
@@ -253,9 +253,8 @@ partial class ModelContext
         {
             HashSet<Type> queryTypesToNofity = [];
             HashSet<IEntity> changedEntities = [];
-            ConcurrentDictionary<Type, HashSet<IEntity>> entitiesChanged = [];
 
-            foreach (var (Entity, Status) in context._operationQueue)
+            foreach (var (Entity, _) in context._operationQueue)
             {
                 changedEntities.Add(Entity);
 
@@ -268,7 +267,7 @@ partial class ModelContext
 
             foreach (var queryTypeToNofity in queryTypesToNofity)
             {
-                context.NotifyChanges(queryTypeToNofity, changedEntities.ToArray());
+                context.NotifyChanges(queryTypeToNofity, [.. changedEntities]);
             }
 
             return ValueTask.CompletedTask;
@@ -362,7 +361,7 @@ partial class ModelContext
                         case EntityStatus.Deleted:
                             {
                                 var set = context._sets.GetOrAdd(Entity.GetType(), []);
-                                set.Remove(Entity.GetKey().EnsureNotNull());
+                                set.TryRemove(Entity.GetKey().EnsureNotNull(), out var _);
 
                                 queryTypesToNofity.Add(Entity.GetType());
                             }

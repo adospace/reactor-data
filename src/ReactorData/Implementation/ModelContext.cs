@@ -14,7 +14,7 @@ namespace ReactorData.Implementation;
 
 partial class ModelContext : IModelContext
 {
-    private readonly ConcurrentDictionary<Type, Dictionary<object, IEntity>> _sets = [];
+    private readonly ConcurrentDictionary<Type, ConcurrentDictionary<object, IEntity>> _sets = [];
 
     private readonly Queue<(IEntity Entity, EntityStatus Status)> _operationQueue = [];
 
