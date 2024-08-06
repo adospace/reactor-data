@@ -10,7 +10,7 @@ namespace ReactorData.Maui;
 
 public static class ServiceCollectionExtensions
 {
-    public static void UseReactorData(this MauiAppBuilder appBuilder, Action<IServiceCollection>? serviceBuilderAction = null)
+    public static MauiAppBuilder UseReactorData(this MauiAppBuilder appBuilder, Action<IServiceCollection>? serviceBuilderAction = null)
     {
         appBuilder.Services.AddSingleton<IDispatcher, Dispatcher>();
 
@@ -19,5 +19,7 @@ public static class ServiceCollectionExtensions
 #endif
 
         serviceBuilderAction?.Invoke(appBuilder.Services);
+
+        return appBuilder;
     }
 }
