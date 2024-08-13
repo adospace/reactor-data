@@ -72,7 +72,7 @@ Note that the `Save()` function is synchronous, it just signals to the context t
 
 Without storage, ReactorData is more or less a state manager, keeping all the entities in memory.
 
-Things are more interesting when configuring a storage plugin, for example, Sqlite.
+Things are more interesting when configuring a storage plugin, such as Sqlite.
 
 ```
 <PackageReference Include="ReactorData.Sqlite" Version="X.X.X.X" />
@@ -80,7 +80,8 @@ Things are more interesting when configuring a storage plugin, for example, Sqli
 Configure the plugin by passing a connection string and the models you want it to manage:
 
 ```csharp
-services.AddReactorDataWithSqlite(
+using ReactorData.Sqlite;
+services.AddReactor(
     connectionString: $"Data Source=todo.db",
     configure: _ => _.Model<Todo>()
 );
@@ -92,7 +93,8 @@ The last thing to do is to load Todo models from the storage when the app starts
 You can decide when and which models to load, in this case, we want to load all the todo models at context startup.
 
 ```csharp
-services.AddReactorDataWithSqlite(
+using ReactorData.Sqlite;
+services.AddReactorData(
     connectionString: $"Data Source={_dbPath}",
     configure: _ => _.Model<Todo>(),
     modelContextConfigure: options =>
@@ -106,8 +108,8 @@ IModelContext.Load<T>() accepts a linq query that lets you specify which records
 
 ## EFCore storage
 
-The EFCore plugin allows you to use whatever data store you like that is supported (Sqlite, SQLServer, etc). Moreover, you can efficiently manage related entities.
-Note that ReactorData works on top of EFCore without interfering with your existing code that may already use it.
+The EFCore plugin allows you to use whatever supported data store you like (Sqlite, SQLServer, etc). Moreover, you can efficiently manage related entities.
+Note that ReactorData works on top of EFCore without interfering with your existing code, which you may already use.
 
 This is how to configure it:
 ```
@@ -115,8 +117,8 @@ This is how to configure it:
 ```
 
 ```csharp
-services.AddReactorDataWithSqlite<TodoDbContext>(
-    options => options.UseXXXX(....),
+using ReactorData.EFCore;
+services.AddReactorData<TodoDbContext>(,
     modelContextConfigure: options =>
     {
         options.ConfigureContext = context => context.Load<Todo>();
