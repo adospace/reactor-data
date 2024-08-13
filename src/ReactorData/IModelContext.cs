@@ -120,7 +120,6 @@ public interface IModelContext
     /// True when the context is saving entities to the storage
     /// </summary>
     bool IsSaving { get; }
-
 }
 
 /// <summary>
