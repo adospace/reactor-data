@@ -13,7 +13,8 @@ public static class ServiceCollectionExtensions
         services.AddReactorData(modelContextConfigure);
         services.AddSingleton<IStorage>(sp =>
         {
-            if (!connectionStringOrDatabaseName.Trim().StartsWith("Data Source",StringComparison.CurrentCultureIgnoreCase))
+            if (!connectionStringOrDatabaseName.Trim()
+                .StartsWith("Data Source",StringComparison.CurrentCultureIgnoreCase))
             {
                 var pathProvider = sp.GetService<IPathProvider>();
                 var connectionString = $"Data Source={Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), connectionStringOrDatabaseName)}";

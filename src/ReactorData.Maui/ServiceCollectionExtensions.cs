@@ -16,7 +16,9 @@ public static class ServiceCollectionExtensions
         appBuilder.Services.AddSingleton<IDispatcher>(dispatcher);
 
 #if ANDROID
-        appBuilder.Services.AddSingleton<IPathProvider, AndroidPathProvider>();
+        appBuilder.Services.AddSingleton<IPathProvider, Platforms.Android.PathProvider>();
+#elif IOS
+        appBuilder.Services.AddSingleton<IPathProvider, Platforms.iOS.PathProvider>();
 #endif
 
         serviceBuilderAction?.Invoke(appBuilder.Services);
