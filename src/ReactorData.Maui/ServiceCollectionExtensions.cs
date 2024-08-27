@@ -10,9 +10,10 @@ namespace ReactorData.Maui;
 
 public static class ServiceCollectionExtensions
 {
-    public static MauiAppBuilder UseReactorData(this MauiAppBuilder appBuilder, Action<IServiceCollection>? serviceBuilderAction = null)
+    public static MauiAppBuilder UseReactorData(this MauiAppBuilder appBuilder, Action<IServiceCollection>? serviceBuilderAction = null, Action<Exception>? onError = null)
     {
-        appBuilder.Services.AddSingleton<IDispatcher, Dispatcher>();
+        var dispatcher = new Dispatcher(onError);
+        appBuilder.Services.AddSingleton<IDispatcher>(dispatcher);
 
 #if ANDROID
         appBuilder.Services.AddSingleton<IPathProvider, AndroidPathProvider>();

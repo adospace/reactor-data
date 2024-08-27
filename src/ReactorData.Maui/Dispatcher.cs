@@ -6,8 +6,10 @@ using System.Threading.Tasks;
 
 namespace ReactorData.Maui;
 
-internal class Dispatcher : IDispatcher
+internal class Dispatcher(Action<Exception>? exceptionCallBack) : IDispatcher
 {
+    private readonly Action<Exception>? _exceptionCallBack = exceptionCallBack;
+
     public void Dispatch(Action action)
     {
         if (Microsoft.Maui.Controls.Application.Current == null)
@@ -23,5 +25,10 @@ internal class Dispatcher : IDispatcher
         {
             action();
         }
+    }
+
+    public void OnError(Exception exception)
+    {
+        _exceptionCallBack?.Invoke(exception);
     }
 }

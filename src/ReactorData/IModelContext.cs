@@ -66,10 +66,10 @@ public interface IModelContext
     /// <returns>The <see cref="EntityStatus"/> of the entity. If the entity is not yet known by the context the <see cref="EntityStatus.Detached"/> is returned</returns>
     EntityStatus GetEntityStatus(IEntity entity);
 
-    /// <summary>
-    /// Callback called when an internal error is raised by the context. The call could be not in the UI thread.
-    /// </summary>
-    Action<Exception>? OnError { get; set; }
+    ///// <summary>
+    ///// Callback called when an internal error is raised by the context. The call could be not in the UI thread.
+    ///// </summary>
+    //Action<Exception>? OnError { get; set; }
 
     /// <summary>
     /// Create a query (<see cref="IQuery{T}"/>) that is update everytime the context is modified.

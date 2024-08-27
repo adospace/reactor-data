@@ -8,4 +8,10 @@ namespace ReactorData;
 [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
 public class ModelAttribute : Attribute
 {
+    public string? KeyPropertyName { get; }
+
+    public ModelAttribute(string? keyPropertyName = null)
+    {
+        KeyPropertyName = keyPropertyName;
+    }
 }

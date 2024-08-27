@@ -37,6 +37,8 @@ public class StorageConfiguration
         }
         else
         {
+            
+
             keyProperty = properties
                 .FirstOrDefault(p => p.GetCustomAttribute(typeof(KeyAttribute)) != null);
 

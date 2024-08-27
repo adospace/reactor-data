@@ -45,13 +45,30 @@ public class ModelPartialClassSourceGenerator : ISourceGenerator
             // Get the class symbol from the semantic model
             var classTypeSymbol = semanticModel.GetDeclaredSymbol(modelToGenerate).EnsureNotNull();
 
+            var modelAttribute = classTypeSymbol.GetAttributes()
+                .First(_ => _.AttributeClass.EnsureNotNull().Name == "ModelAttribute" || _.AttributeClass.EnsureNotNull().Name == "Model");
+
+            IPropertySymbol? idProperty = null;
+
+            if (modelAttribute?.ConstructorArguments.Length > 0)
+            {
+                var indexPropertyName = (string?)modelAttribute.ConstructorArguments[0].Value;
+
+                if (indexPropertyName != null)
+                {
+                    idProperty = classTypeSymbol.GetMembers()
+                        .OfType<IPropertySymbol>() // Filter members to only include properties
+                        .FirstOrDefault(prop => prop.Name == indexPropertyName);
+                }
+            }
+
             string fullyQualifiedTypeName = classTypeSymbol.ToDisplayString(qualifiedFormat);
             string namespaceName = classTypeSymbol.ContainingNamespace.ToDisplayString();
             string className = classTypeSymbol.Name;
 
 
             // Loop through all the properties of the class
-            var idProperty = classTypeSymbol.GetMembers()
+            idProperty ??= classTypeSymbol.GetMembers()
                 .OfType<IPropertySymbol>() // Filter members to only include properties
                 .FirstOrDefault(prop =>
                     HasAttribute(prop, "KeyAttribute"));
@@ -69,7 +86,7 @@ public class ModelPartialClassSourceGenerator : ISourceGenerator
                 var diagnosticDescriptor = new DiagnosticDescriptor(
                     id: "REACTOR_DATA_001", // Unique ID for your diagnostic
                     title: $"Model '{fullyQualifiedTypeName}' without key property",
-                    messageFormat: "Unable to generate model entity: {0} (Looking for a property named 'Id', 'Key' or with [ModelKey] attribute)", // {0} will be replaced with 'messageArgs'
+                    messageFormat: "Unable to generate model entity: {0} (Looking for a property named 'Id', 'Key' or as specified with the 'keyPropertyName' constructor parameter of the Model attribute)", // {0} will be replaced with 'messageArgs'
                     category: "ReactorData Model Attribute",
                     defaultSeverity: DiagnosticSeverity.Warning, // Choose the appropriate severity
                     isEnabledByDefault: true

@@ -85,11 +85,10 @@ class Storage : IStorage
             {
                 var command = connection.CreateCommand();
 
-                var isKeyInt = modelConfiguration.Value.KeyPropertyType == typeof(int);
                 var keyTypeName = GetSqliteTypeFor(modelConfiguration.Value.KeyPropertyType);
 
                 command.CommandText = $$"""
-                CREATE TABLE IF NOT EXISTS {{modelConfiguration.Value.TableName}} (ID {{(isKeyInt ? "INTEGER PRIMARY KEY" : keyTypeName)}}, MODEL TEXT)
+                CREATE TABLE IF NOT EXISTS {{modelConfiguration.Value.TableName}} (ID {{keyTypeName}} PRIMARY KEY, MODEL TEXT)
                 """;
 
                 await command.ExecuteNonQueryAsync();
@@ -124,7 +123,8 @@ class Storage : IStorage
             type == typeof(char) ||
             type == typeof(DateOnly) ||
             type == typeof(DateTime) ||
-            type == typeof(DateTimeOffset)
+            type == typeof(DateTimeOffset) ||
+            type == typeof(Guid)
             )
         {
             return "TEXT";
@@ -134,7 +134,7 @@ class Storage : IStorage
             return "BLOB";
         }
 
-        throw new NotImplementedException();
+        throw new NotImplementedException($"Unable to get the Sqlite type for type: {type}");
     }
 
     public async Task<IEnumerable<IEntity>> Load<TEntity>(Func<IQueryable<TEntity>, IQueryable<TEntity>>? queryFunction = null) where TEntity : class, IEntity
@@ -162,26 +162,6 @@ class Storage : IStorage
 
         while (await reader.ReadAsync())
         {
-            //object? key = null;
-
-            //if (modelConfiguration.KeyPropertyType == typeof(int))
-            //{
-            //    key = reader.GetInt32(0);
-            //}
-            //else if (modelConfiguration.KeyPropertyType == typeof(string))
-            //{
-            //    key = reader.GetString(0);
-            //}
-            //else if (modelConfiguration.KeyPropertyType == typeof(Guid))
-            //{
-            //    key = Guid.Parse(reader.GetString(0));
-            //}
-            //else
-            //{
-            //    //todo...
-            //    throw new NotSupportedException();
-            //}
-
             var json = reader.GetString(1);
 
             var loadedEntity = (TEntity)System.Text.Json.JsonSerializer.Deserialize(json, typeof(TEntity)).EnsureNotNull();
@@ -262,6 +242,7 @@ class Storage : IStorage
         {
             throw new InvalidOperationException($"Missing model configuration for {entityType.Name}");
         }
+
         var json = System.Text.Json.JsonSerializer.Serialize(entity, entityType);
 
         command.CommandText = $$"""
@@ -282,8 +263,9 @@ class Storage : IStorage
             throw new InvalidOperationException($"Missing model configuration for {entityType.Name}");
         }
 
-
-        if (modelConfiguration.KeyPropertyType == typeof(int))
+        var keyValue = entity.GetKey().EnsureNotNull();
+        if (modelConfiguration.KeyPropertyType == typeof(int) &&
+            (int)keyValue == 0)
         {
             command.CommandText = $$"""
                                     INSERT INTO {{modelConfiguration.TableName}} (MODEL) VALUES ($json) RETURNING ROWID
@@ -301,7 +283,7 @@ class Storage : IStorage
                                     UPDATE {{modelConfiguration.TableName}} SET MODEL = $json WHERE ID = $id
                                     """;
             command.Parameters.Clear();
-            command.Parameters.AddWithValue("$id", entity.GetKey().EnsureNotNull());
+            command.Parameters.AddWithValue("$id", keyValue);
             command.Parameters.AddWithValue("$json", json);
 
             await command.ExecuteNonQueryAsync();
@@ -314,7 +296,7 @@ class Storage : IStorage
                                     INSERT INTO {{modelConfiguration.TableName}} (ID, MODEL) VALUES ($id, $json)
                                     """;
             command.Parameters.Clear();
-            command.Parameters.AddWithValue("$id", entity.GetKey().EnsureNotNull());
+            command.Parameters.AddWithValue("$id", keyValue);
             command.Parameters.AddWithValue("$json", json);
 
             await command.ExecuteNonQueryAsync();

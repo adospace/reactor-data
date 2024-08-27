@@ -9,4 +9,6 @@ namespace ReactorData;
 public interface IDispatcher
 {
     void Dispatch(Action action);
+
+    void OnError(Exception exception);
 }

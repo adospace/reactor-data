@@ -51,7 +51,7 @@ partial class ModelContext : IModelContext
         Options = _owner.Options;
     }
 
-    public Action<Exception>? OnError { get; set; }
+    //public Action<Exception>? OnError { get; set; }
 
     public ModelContextOptions Options { get; }
 
@@ -90,7 +90,7 @@ partial class ModelContext : IModelContext
         {
             try
             {
-                OnError?.Invoke(ex);
+                 Dispatcher?.OnError(ex);
             }
             catch { }
         }
@@ -205,7 +205,7 @@ partial class ModelContext : IModelContext
         {
             _notificationSemaphore.Wait();
             List<WeakReference<IObservableQuery>>? referencesToRemove = null;
-            foreach (var queryReference in queries)
+            foreach (var queryReference in queries.ToArray())
             {
                 if (queryReference.TryGetTarget(out var query))
                 {
