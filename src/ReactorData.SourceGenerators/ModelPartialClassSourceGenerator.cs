@@ -111,7 +111,7 @@ public class ModelPartialClassSourceGenerator : ISourceGenerator
                 {
                     partial class {{className}} : IEntity
                     {
-                        object? IEntity.GetKey() => {{idPropertyName}} == default ? null : {{idPropertyName}};
+                        object? IEntity.GetKey() => {{idPropertyName}};
                     }
                 }
                 """;
