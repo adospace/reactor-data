@@ -42,28 +42,28 @@ partial class Todo
 Get the model context from the container 
 
 ```csharp
-var _modelContext = serviceProvider.GetService<IModelContext>();
+var modelContext = serviceProvider.GetService<IModelContext>();
 ```
 
 Create a Query for the model:
 
 ```csharp
-var _query = _modelContext.Query<Todo>();
+var query = modelContext.Query<Todo>();
 ```
 
 A query is an object implementing INotifyCollectionChanged that notifies subscribers of any change to the list of models contained in the context.
 You can freely create a query with custom linq, ordering results as you prefer:
 
 ```csharp
-var _query = _modelContext.Query<Todo>(_=>_.Where(x => x.Done).OrderBy(x => x.Title));
+var query = modelContext.Query<Todo>(_=>_.Where(x => x.Done).OrderBy(x => x.Title));
 ```
 Notifications are raised only for those models that pass the filter and in the order specified.
 
 Now just add an entity to your context and the query will receive the notification.
 
 ```csharp
-_modelContext.Add(new Todo { Title = "Task 1" });
-_modelContext.Save();
+modelContext.Add(new Todo { Title = "Task 1" });
+modelContext.Save();
 ```
 
 Note that the `Save()` function is synchronous, it just signals to the context that you modified it. Entities are sent to the storage in a separate background thread.
