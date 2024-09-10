@@ -18,8 +18,6 @@ partial class ModelContext : IModelContext
 
     private readonly Queue<(IEntity Entity, EntityStatus Status)> _operationQueue = [];
 
-    //private readonly Queue<OperationPending> _pendingOperations = [];
-
     private readonly ConcurrentDictionary<IEntity, EntityStatus> _entityStatus = [];
 
     private readonly ActionBlock<Operation> _operationsBlock;
@@ -50,8 +48,6 @@ partial class ModelContext : IModelContext
         Dispatcher = _owner.Dispatcher;
         Options = _owner.Options;
     }
-
-    //public Action<Exception>? OnError { get; set; }
 
     public ModelContextOptions Options { get; }
 
@@ -105,11 +101,6 @@ partial class ModelContext : IModelContext
     {
         _operationsBlock.Post(new OperationAdd(entities));
     }
-
-    //public void Update(params IEntity[] entities)
-    //{
-    //    _operationsBlock.Post(new OperationUpdate(entities));
-    //}
     public void Replace(IEntity oldEntiy, IEntity newEntity)
     {
         _operationsBlock.Post(new OperationUpdate(oldEntiy, newEntity));

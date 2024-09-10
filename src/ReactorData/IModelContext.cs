@@ -66,11 +66,6 @@ public interface IModelContext
     /// <returns>The <see cref="EntityStatus"/> of the entity. If the entity is not yet known by the context the <see cref="EntityStatus.Detached"/> is returned</returns>
     EntityStatus GetEntityStatus(IEntity entity);
 
-    ///// <summary>
-    ///// Callback called when an internal error is raised by the context. The call could be not in the UI thread.
-    ///// </summary>
-    //Action<Exception>? OnError { get; set; }
-
     /// <summary>
     /// Create a query (<see cref="IQuery{T}"/>) that is update everytime the context is modified.
     /// </summary>
@@ -99,12 +94,12 @@ public interface IModelContext
     /// <returns>The scoped context</returns>
     IModelContext CreateScope();
 
-    /// <summary>
-    /// Run background task for the context
-    /// </summary>
-    /// <param name="task">Task to execute in background</param>
-    /// <remarks>During the execution of the task, all the pending operations are suspended</remarks>
-    void RunBackgroundTask(Func<IModelContext, Task> task);
+    ///// <summary>
+    ///// Run background task for the context
+    ///// </summary>
+    ///// <param name="task">Task to execute in background</param>
+    ///// <remarks>During the execution of the task, all the pending operations are suspended</remarks>
+    //void RunBackgroundTask(Func<IModelContext, Task> task);
 
     /// <summary>
     /// Event raised on the UI thread when a property of the context changes (ie IsLoading or IsSaving)
@@ -157,5 +152,21 @@ public static class ModelContextExtensions
     /// <returns></returns>
     public static bool IsBusy(this IModelContext modelContext)
         => modelContext.IsLoading || modelContext.IsSaving;
+
+
+    public static async Task<IQuery<T>> Fetch<T>(this IModelContext modelContext,
+        Expression<Func<IQueryable<T>,
+        IQueryable<T>>>? predicate = null,
+        Func<T, T, bool>? compareFunc = null,
+        bool forceReload = false) where T : class, IEntity
+    { 
+        modelContext.Load<T>(predicate, compareFunc, forceReload);
+
+        await modelContext.Flush();
+
+        var query = modelContext.Query<T>(predicate);
+
+        return query;
+    }
 
 }
