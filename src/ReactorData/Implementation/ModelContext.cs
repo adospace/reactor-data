@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -27,12 +28,16 @@ partial class ModelContext : IModelContext
     private readonly ConcurrentDictionary<Type, List<WeakReference<IObservableQuery>>> _queries = [];
 
     private readonly SemaphoreSlim _notificationSemaphore = new(1);
+    
     private readonly ModelContext? _owner;
+
+    private ILogger<ModelContext>? _logger;
 
     public ModelContext(IServiceProvider serviceProvider, ModelContextOptions options)
     {
         _operationsBlock = new ActionBlock<Operation>(DoWork);
         _storage = serviceProvider.GetService<IStorage>();
+        _logger = serviceProvider.GetService<ILoggerFactory>()?.CreateLogger<ModelContext>();
         Dispatcher = serviceProvider.GetService<IDispatcher>();
 
         Options = options;
@@ -42,7 +47,7 @@ partial class ModelContext : IModelContext
     private ModelContext(ModelContext owner)
     {
         _owner = owner;
-
+        _logger = owner._logger;
         _operationsBlock = new ActionBlock<Operation>(DoWork);
 
         Dispatcher = _owner.Dispatcher;
@@ -99,15 +104,44 @@ partial class ModelContext : IModelContext
 
     public void Add(params IEntity[] entities)
     {
+        if (_logger != null)
+        {
+            foreach (var entity in entities)
+            {
+                _logger?.LogDebug("OperationAdd.Post() EntityType:{EntityType} Key:{Key}", entity.GetType().Name, entity.GetKey());
+            }
+        }
+
         _operationsBlock.Post(new OperationAdd(entities));
     }
-    public void Replace(IEntity oldEntiy, IEntity newEntity)
+
+    public void Replace(IEntity oldEntity, IEntity newEntity)
     {
-        _operationsBlock.Post(new OperationUpdate(oldEntiy, newEntity));
+        if (_logger != null)
+        {
+            if (oldEntity != newEntity)
+            {
+                _logger?.LogDebug("OperationUpdate.Post() OldEntity:{TypeOld} OldKey:{OldKey} NewEntity:{TypeNew} NewKey:{NewKey})", oldEntity.GetType().Name, oldEntity.GetKey(), newEntity.GetType().Name, newEntity.GetKey());
+            }
+            else
+            {
+                _logger?.LogDebug("OperationUpdate.Post() EntityType:{EntityType} Key:{Key}", newEntity.GetType().Name, newEntity.GetType().Name);
+            }
+        }
+
+        _operationsBlock.Post(new OperationUpdate(oldEntity, newEntity));
     }
 
     public void Delete(params IEntity[] entities)
     {
+        if (_logger != null)
+        {
+            foreach (var entity in entities)
+            {
+                _logger?.LogDebug("OperationDelete.Post() EntityType:{EntityType} Key:{Key}", entity.GetType().Name, entity.GetType().Name);
+            }
+        }
+
         _operationsBlock.Post(new OperationDelete(entities));
     }
 
@@ -118,6 +152,8 @@ partial class ModelContext : IModelContext
         Action<IEnumerable<T>>? onLoad = null
         ) where T : class, IEntity
     {
+        _logger?.LogDebug("OperationFetch.Load() {Type} ({Query})", typeof(T).Name, predicate);
+
         _operationsBlock.Post(
             new OperationFetch(
                 typeof(T),
@@ -129,6 +165,8 @@ partial class ModelContext : IModelContext
 
     public void Save()
     {
+        _logger?.LogDebug("OperationSave.Post()");
+
         _operationsBlock.Post(new OperationSave());
     }
 
@@ -146,19 +184,18 @@ partial class ModelContext : IModelContext
     }
     public void DiscardChanges()
     {
+        _logger?.LogDebug("OperationDiscardChanges.Post()");
+
         _operationsBlock.Post(new OperationDiscardChanges());
     }
 
     public async Task Flush()
     {
+        _logger?.LogDebug("OperationFlush.Post()");
+
         var signalEvent = new AsyncAutoResetEvent();
         _operationsBlock.Post(new OperationFlush(signalEvent));
         await signalEvent.WaitAsync();
-    }
-
-    public void RunBackgroundTask(Func<IModelContext, Task> task)
-    {
-        _operationsBlock.Post(new OperationBackgroundTask(task));
     }
 
     public IQuery<T> Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicateExpression = null) where T : class, IEntity
@@ -186,7 +223,6 @@ partial class ModelContext : IModelContext
 
         return default;
     }
-
 
     private void NotifyChanges(Type typeOfEntity, IEntity[]? changedEntities = null, bool forceReload = false)
     {

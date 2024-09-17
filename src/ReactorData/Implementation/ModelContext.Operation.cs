@@ -1,6 +1,8 @@
-﻿using System.Collections.Concurrent;
+﻿using Microsoft.Extensions.Logging;
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Xml.Linq;
 
 namespace ReactorData.Implementation;
 
@@ -159,6 +161,8 @@ partial class ModelContext
 
             try
             {
+                context._logger?.LogDebug("OperationFetch.Begin() {Type}", EntityTypeToLoad);
+
                 context.IsLoading = true;
 
                 var entities = await LoadFunction(storage);
@@ -243,6 +247,7 @@ partial class ModelContext
             finally
             {
                 context.IsLoading = false;
+                context._logger?.LogDebug("OperationFetch.End() {Type}", EntityTypeToLoad);
             }
         }
     }
@@ -282,11 +287,13 @@ partial class ModelContext
 
             try
             {
+                context._logger?.LogDebug("OperationSave.Begin()");
+
                 context.IsSaving = storage != null && context._operationQueue.Count > 0;
                 if (storage != null)
                 {
                     var listOfStorageOperation = new List<StorageOperation>();
-                    var operationsAdded = new HashSet<object>();
+                    var operationsAddedForEachType = new Dictionary<Type, HashSet<object>>();
                     foreach (var (Entity, Status) in context._operationQueue)
                     {
                         var currentEntityStatus = context.GetEntityStatus(Entity);
@@ -297,18 +304,27 @@ partial class ModelContext
                         }
 
                         var key = Entity.GetKey();
+                        var entityType = Entity.GetType();
+
                         if (key != null)
                         {
+                            if (!operationsAddedForEachType.TryGetValue(entityType, out var operationsAdded))
+                            {
+                                operationsAddedForEachType[entityType] = operationsAdded = [];
+                            }
+
                             if (operationsAdded.Contains(key))
                             {
-                                System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status} (Key already added: {key}) ");
+                                System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status} (Key already added: {key})");
+                                context._logger?.LogWarning("OperationSave: {Status} {Type} ({Key}) Key already added", Status, Entity.GetType().Name, key);
                                 continue;
                             }
 
                             operationsAdded.Add(key);
-                        }
+                        6}
 
                         System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status}");
+                        context._logger?.LogDebug("OperationSave: {Status} {Type} ({Key})", Status, Entity.GetType().Name, key);
 
                         switch (Status)
                         {
@@ -343,7 +359,6 @@ partial class ModelContext
                             {
                                 var entityType = Entity.GetType();
                                 var set = context._sets.GetOrAdd(entityType, []);
-                                //set.Add(Entity.GetKey().EnsureNotNull(), Entity);
                                 set[Entity.GetKey().EnsureNotNull()] = Entity;
 
                                 queryTypesToNofity.Add(entityType);
@@ -380,6 +395,7 @@ partial class ModelContext
             finally
             {
                 context.IsSaving = false;
+                context._logger?.LogDebug("OperationSave.End()");
             }
         }
     }
@@ -393,14 +409,6 @@ partial class ModelContext
             Signal.Set();
 
             return ValueTask.CompletedTask;
-        }
-    }
-
-    record OperationBackgroundTask(Func<IModelContext, Task> BackgroundTask) : Operation
-    {
-        internal override async ValueTask Do(ModelContext context)
-        {
-            await BackgroundTask(context);
         }
     }
 }
