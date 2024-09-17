@@ -321,7 +321,7 @@ partial class ModelContext
                             }
 
                             operationsAdded.Add(key);
-                        6}
+                        }
 
                         System.Diagnostics.Debug.WriteLine($"StorageOperation: {Status}");
                         context._logger?.LogDebug("OperationSave: {Status} {Type} ({Key})", Status, Entity.GetType().Name, key);
