@@ -83,7 +83,7 @@ class Storage : IStorage
 
             foreach (var modelConfiguration in _configuration.Models)
             {
-                var command = connection.CreateCommand();
+                using var command = connection.CreateCommand();
 
                 var keyTypeName = GetSqliteTypeFor(modelConfiguration.Value.KeyPropertyType);
 
@@ -144,7 +144,7 @@ class Storage : IStorage
 
         await Initialize(connection);
 
-        var command = connection.EnsureNotNull().CreateCommand();
+        using var command = connection.EnsureNotNull().CreateCommand();
 
         var entityType = typeof(TEntity);
         if (!_configuration.EnsureNotNull().Models.TryGetValue(entityType, out var modelConfiguration))

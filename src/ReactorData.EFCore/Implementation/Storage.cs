@@ -63,13 +63,14 @@ class Storage<T> : IStorage where T : DbContext
     public async Task<IEnumerable<IEntity>> Load<TEntity>(Func<IQueryable<TEntity>, IQueryable<TEntity>>? queryFunction = null) where TEntity : class, IEntity
     {
         using var serviceScope = _serviceProvider.CreateScope();
-        var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
+        using var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
+        dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
 
         await Initialize(dbContext);
 
         try
         {
-            IQueryable<TEntity> query = dbContext.Set<TEntity>();
+            IQueryable<TEntity> query = dbContext.Set<TEntity>().AsNoTracking();
 
             if (queryFunction != null)
             {
@@ -82,10 +83,7 @@ class Storage<T> : IStorage where T : DbContext
         {
             _logger?.LogError(ex, "Unable to load entities of type {EntityType}", typeof(TEntity));
             return [];
-            //throw;
         }
-
-        //return dbContext.ChangeTracker.Entries().Select(_=>_.Entity).Cast<IEntity>().ToList();
     }
 
     public async Task Save(IEnumerable<StorageOperation> operations)
@@ -94,8 +92,10 @@ class Storage<T> : IStorage where T : DbContext
         try
         {
             using var serviceScope = _serviceProvider.CreateScope();
-            var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
+            using var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
             dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
+            dbContext.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+            dbContext.ChangeTracker.LazyLoadingEnabled = false;
 
             await Initialize(dbContext);
 
@@ -111,22 +111,20 @@ class Storage<T> : IStorage where T : DbContext
                     {
                         case StorageAdd storageInsert:
                             dbContext.Entry(entity).State = EntityState.Added;
-                            //dbContext.Add(entity);
-                            _logger?.LogTrace("Insert entity {EntityId} : {Entity}", entity.GetKey(), System.Text.Json.JsonSerializer.Serialize(entity));
+                            _logger?.LogTrace("Insert entity {EntityId} ({EntityType})", entity.GetKey(), entity.GetType());
                             break;
                         case StorageUpdate storageUpdate:
                             dbContext.Entry(entity).State = EntityState.Modified;
-                            //dbContext.Update(entity);
-                            _logger?.LogTrace("Update entity {EntityId} : {Entity}", entity.GetKey(), System.Text.Json.JsonSerializer.Serialize(entity));
+                            _logger?.LogTrace("Update entity {EntityId} ({EntityType})", entity.GetKey(), entity.GetType());
                             break;
                         case StorageDelete storageDelete:
                             dbContext.Entry(entity).State = EntityState.Deleted;
-                            //dbContext.Remove(entity);
-                            _logger?.LogTrace("Delete entity {EntityId} : {Entity}", entity.GetKey(), System.Text.Json.JsonSerializer.Serialize(entity));
+                            _logger?.LogTrace("Delete entity {EntityId} ({EntityType})", entity.GetKey(), entity.GetType());
                             break;
                     }
 
                 }
+
             }
 
             await dbContext.SaveChangesAsync();
