@@ -8,6 +8,7 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <NoWarn>RS1036,NU1903,NU1902,NU1901</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
