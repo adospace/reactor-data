@@ -46,6 +46,39 @@ namespace ReactorData.Tests.Models.Migrations
                     b.ToTable("Directors");
                 });
 
+            modelBuilder.Entity("ReactorData.Tests.Models.Game", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Games");
+                });
+
+            modelBuilder.Entity("ReactorData.Tests.Models.GamePlayer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("GameId")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PlayerId")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PlayerId");
+
+                    b.HasIndex("GameId", "PlayerId")
+                        .IsUnique();
+
+                    b.ToTable("GamePlayers");
+                });
+
             modelBuilder.Entity("ReactorData.Tests.Models.Movie", b =>
                 {
                     b.Property<int>("Id")
@@ -69,6 +102,36 @@ namespace ReactorData.Tests.Models.Migrations
                     b.ToTable("Movies");
                 });
 
+            modelBuilder.Entity("ReactorData.Tests.Models.Player", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Players");
+                });
+
+            modelBuilder.Entity("ReactorData.Tests.Models.GamePlayer", b =>
+                {
+                    b.HasOne("ReactorData.Tests.Models.Game", null)
+                        .WithMany("Players")
+                        .HasForeignKey("GameId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("ReactorData.Tests.Models.Player", null)
+                        .WithMany("Games")
+                        .HasForeignKey("PlayerId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("ReactorData.Tests.Models.Movie", b =>
                 {
                     b.HasOne("ReactorData.Tests.Models.Director", "Director")
@@ -83,6 +146,16 @@ namespace ReactorData.Tests.Models.Migrations
             modelBuilder.Entity("ReactorData.Tests.Models.Director", b =>
                 {
                     b.Navigation("Movies");
+                });
+
+            modelBuilder.Entity("ReactorData.Tests.Models.Game", b =>
+                {
+                    b.Navigation("Players");
+                });
+
+            modelBuilder.Entity("ReactorData.Tests.Models.Player", b =>
+                {
+                    b.Navigation("Games");
                 });
 #pragma warning restore 612, 618
         }

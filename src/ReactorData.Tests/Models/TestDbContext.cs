@@ -15,6 +15,12 @@ class TestDbContext : DbContext
 
     public DbSet<Director> Directors => Set<Director>();
 
+    public DbSet<Game> Games => Set<Game>();
+
+    public DbSet<Player> Players => Set<Player>();
+
+    public DbSet<GamePlayer> GamePlayers => Set<GamePlayer>();
+
     public TestDbContext() { }
 
     public TestDbContext(DbContextOptions<TestDbContext> options) : base(options)
@@ -28,5 +34,13 @@ class TestDbContext : DbContext
         }
 
         base.OnConfiguring(optionsBuilder);
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<GamePlayer>()
+            .HasIndex(gp => new { gp.GameId, gp.PlayerId }).IsUnique();
+
+        base.OnModelCreating(modelBuilder);
     }
 }

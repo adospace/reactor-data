@@ -107,4 +107,50 @@ class BasicEfCoreStorageTests
         _container.GetEntityStatus(movie).Should().Be(EntityStatus.Attached);
 
     }
+
+    [Test]
+    public async Task BasicOperationsOnEntityWithManyToManyRelationshipUsingEfCoreStorage()
+    {
+        // Initialize some data
+        {
+            _container.Add(new Player { Name = "Player 1" }, new Game());
+            _container.Save();
+            await _container.Flush();
+        }
+        // Update the many-to-many relationship with existing models
+        {
+            var existingGame = _container.FindByKey<Game>(1)!;
+            var existingPlayer = _container.FindByKey<Player>(1)!;
+            _container.Add(new GamePlayer { GameId = existingGame.Id, PlayerId = existingPlayer.Id });
+            _container.Save();
+            await _container.Flush();
+        }
+        // Check the Sqlite database for the updated many-to-many relationship
+        {
+            var gamePlayers = new List<GamePlayerEntry>();
+            await ExecuteSqliteReadCommand(
+                "SELECT * FROM GamePlayers;",
+                reader =>
+                {
+                    var gameId = reader.GetInt32(reader.GetOrdinal("GameId"));
+                    var playerId = reader.GetInt32(reader.GetOrdinal("PlayerId"));
+                    gamePlayers.Add(new GamePlayerEntry(gameId, playerId));
+                });
+            gamePlayers.Should().HaveCount(1);
+            gamePlayers.Should().ContainSingle(e => e.GamesId == 1 && e.PlayerId == 1);
+        }
+    }
+    private record GamePlayerEntry(int GamesId, int PlayerId);
+
+    private async Task ExecuteSqliteReadCommand(string sqlCommand, Action<SqliteDataReader> onRead)
+    {
+        await using var command = _connection.CreateCommand();
+        command.CommandText = sqlCommand;
+        await using var reader = await command.ExecuteReaderAsync();
+        ArgumentNullException.ThrowIfNull(reader);
+        while (reader.Read())
+        {
+            onRead(reader);
+        }
+    }
 }
