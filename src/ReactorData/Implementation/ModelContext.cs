@@ -31,7 +31,7 @@ partial class ModelContext : IModelContext
     
     private readonly ModelContext? _owner;
 
-    private ILogger<ModelContext>? _logger;
+    private readonly ILogger<ModelContext>? _logger;
 
     public ModelContext(IServiceProvider serviceProvider, ModelContextOptions options)
     {
@@ -57,6 +57,8 @@ partial class ModelContext : IModelContext
     public ModelContextOptions Options { get; }
 
     public IDispatcher? Dispatcher { get; }
+
+    public int PendingOperationsCount => _operationQueue.Count;
 
     public EntityStatus GetEntityStatus(IEntity entity)
     {
@@ -163,11 +165,15 @@ partial class ModelContext : IModelContext
                 OnLoad: onLoad != null ? items => onLoad?.Invoke(items.Cast<T>()) : null));
     }
 
-    public void Save()
+    public int Save()
     {
         _logger?.LogDebug("OperationSave.Post()");
 
+        var pendingOperationsCount = _operationQueue.Count;        
+        
         _operationsBlock.Post(new OperationSave());
+
+        return pendingOperationsCount;
     }
 
     public IReadOnlyList<T> Set<T>() where T : class, IEntity
@@ -182,20 +188,28 @@ partial class ModelContext : IModelContext
             .Except(_entityStatus.Where(_ => _.Value == EntityStatus.Deleted).Select(_ => _.Key).OfType<T>())
             .ToList();
     }
-    public void DiscardChanges()
+    public int DiscardChanges()
     {
         _logger?.LogDebug("OperationDiscardChanges.Post()");
 
+        var pendingOperationsCount = _operationQueue.Count;
+
         _operationsBlock.Post(new OperationDiscardChanges());
+
+        return pendingOperationsCount;
     }
 
-    public async Task Flush()
+    public async Task<int> Flush()
     {
         _logger?.LogDebug("OperationFlush.Post()");
+
+        var pendingOperationsCount = _operationQueue.Count;
 
         var signalEvent = new AsyncAutoResetEvent();
         _operationsBlock.Post(new OperationFlush(signalEvent));
         await signalEvent.WaitAsync();
+
+        return pendingOperationsCount;
     }
 
     public IQuery<T> Query<T>(Expression<Func<IQueryable<T>, IQueryable<T>>>? predicateExpression = null) where T : class, IEntity

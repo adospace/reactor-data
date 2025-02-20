@@ -38,7 +38,8 @@ public interface IModelContext
     /// <summary>
     /// Save any pending changes in a background thread. After the save is applied pending entities will have the <see cref="EntityStatus.Attached"/> status
     /// </summary>
-    void Save();
+    /// <returns>The number of operations saved</returns>
+    int Save();
 
     /// <summary>
     /// Find an entity by Key (usually is the Id property of the entity)
@@ -51,13 +52,13 @@ public interface IModelContext
     /// <summary>
     /// Discard any pending change and revert the context to the initial state
     /// </summary>
-    void DiscardChanges();
+    int DiscardChanges();
 
     /// <summary>
     /// Wait for any pending operation to the context to complete
     /// </summary>
-    /// <returns>Task to wait</returns>
-    Task Flush();
+    /// <returns>Task to wait to get the number of operations flushed</returns>
+    Task<int> Flush();
 
     /// <summary>
     /// Get the <see cref="EntityStatus"/> af an entity
@@ -115,6 +116,11 @@ public interface IModelContext
     /// True when the context is saving entities to the storage
     /// </summary>
     bool IsSaving { get; }
+
+    /// <summary>
+    /// Returns the number of pending operations in the context
+    /// </summary>
+    int PendingOperationsCount { get; }
 }
 
 /// <summary>
@@ -168,5 +174,8 @@ public static class ModelContextExtensions
 
         return query;
     }
+
+    public static bool HasPendingOperations(this IModelContext modelContext)
+        => modelContext.PendingOperationsCount > 0;
 
 }
