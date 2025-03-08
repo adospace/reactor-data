@@ -20,7 +20,7 @@ public class PathProvider : IPathProvider
     /// <inheritdoc />
     public string? GetDefaultSecretCacheDirectory()
     {
-        var path = global::Android.App.Application.Context.FilesDir?.AbsolutePath;
+        var path = Application.Context.FilesDir?.AbsolutePath;
 
         if (path is null)
         {

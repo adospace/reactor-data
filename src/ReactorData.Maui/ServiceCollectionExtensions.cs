@@ -19,6 +19,10 @@ public static class ServiceCollectionExtensions
         appBuilder.Services.AddSingleton<IPathProvider, Platforms.Android.PathProvider>();
 #elif IOS
         appBuilder.Services.AddSingleton<IPathProvider, Platforms.iOS.PathProvider>();
+#elif MACCATALYST
+        appBuilder.Services.AddSingleton<IPathProvider, Platforms.MacCatalyst.PathProvider>();
+#elif WINDOWS 
+        appBuilder.Services.AddSingleton<IPathProvider, Platforms.Windows.PathProvider>();
 #endif
 
         serviceBuilderAction?.Invoke(appBuilder.Services);

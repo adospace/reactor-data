@@ -29,30 +29,25 @@ partial class ModelContext : IModelContext
 
     private readonly SemaphoreSlim _notificationSemaphore = new(1);
     
-    private readonly ModelContext? _owner;
+    //private readonly ModelContext? _owner;
 
     private readonly ILogger<ModelContext>? _logger;
 
+    IServiceProvider _serviceProvider;
+
     public ModelContext(IServiceProvider serviceProvider, ModelContextOptions options)
     {
+        _serviceProvider = serviceProvider;
         _operationsBlock = new ActionBlock<Operation>(DoWork);
         _storage = serviceProvider.GetService<IStorage>();
         _logger = serviceProvider.GetService<ILoggerFactory>()?.CreateLogger<ModelContext>();
+
         Dispatcher = serviceProvider.GetService<IDispatcher>();
 
         Options = options;
         Options.ConfigureContext?.Invoke(this);
     }
 
-    private ModelContext(ModelContext owner)
-    {
-        _owner = owner;
-        _logger = owner._logger;
-        _operationsBlock = new ActionBlock<Operation>(DoWork);
-
-        Dispatcher = _owner.Dispatcher;
-        Options = _owner.Options;
-    }
 
     public ModelContextOptions Options { get; }
 
@@ -101,7 +96,7 @@ partial class ModelContext : IModelContext
 
     public IModelContext CreateScope()
     {
-        return new ModelContext(this);
+        return new ModelContext(_serviceProvider, Options);
     }
 
     public void Add(params IEntity[] entities)

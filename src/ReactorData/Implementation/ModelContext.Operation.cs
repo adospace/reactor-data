@@ -153,7 +153,7 @@ partial class ModelContext
 
         internal override async ValueTask Do(ModelContext context)
         {
-            var storage = context._owner?._storage ?? context._storage;
+            var storage = /*context._owner?._storage ?? */context._storage;
             if (storage == null)
             {
                 return;
@@ -283,7 +283,7 @@ partial class ModelContext
     {
         internal override async ValueTask Do(ModelContext context)
         {
-            var storage = context._owner?._storage ?? context._storage;
+            var storage = context._storage;
 
             try
             {

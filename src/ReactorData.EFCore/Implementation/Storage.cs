@@ -122,9 +122,7 @@ class Storage<T> : IStorage where T : DbContext
                             _logger?.LogTrace("Delete entity {EntityId} ({EntityType})", entity.GetKey(), entity.GetType());
                             break;
                     }
-
                 }
-
             }
 
             await dbContext.SaveChangesAsync();
@@ -133,7 +131,7 @@ class Storage<T> : IStorage where T : DbContext
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Saving changes to context resulted in an unhandled exception");
+            _logger?.LogError(ex, "Saving changes to context resulted in an unhandled exception ({Operations})", System.Text.Json.JsonSerializer.Serialize(operations));
             throw;
         }
     }
