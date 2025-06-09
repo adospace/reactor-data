@@ -32,27 +32,27 @@ public interface IStorage
 /// Generic CRUD operation
 /// </summary>
 /// <param name="entities">List of entities linked to the operation</param>
-public abstract class StorageOperation(IEnumerable<IEntity> entities)
+public abstract class StorageOperation(IEnumerable<object> entities)
 {
-    public IEnumerable<IEntity> Entities { get; } = entities;
+    public IEnumerable<object> Entities { get; } = entities;
 }
 
 /// <summary>
 /// Add operation
 /// </summary>
 /// <param name="entities">List of entities to add to the storage</param>
-public class StorageAdd(IEnumerable<IEntity> entities) : StorageOperation(entities);
+public class StorageAdd(IEnumerable<object> entities) : StorageOperation(entities);
 
 /// <summary>
 /// Update operation
 /// </summary>
 /// <param name="entities">List of entities to update in the storage</param>
-public class StorageUpdate(IEnumerable<IEntity> entities) : StorageOperation(entities);
+public class StorageUpdate(IEnumerable<object> entities) : StorageOperation(entities);
 
 /// <summary>
 /// Delete operation
 /// </summary>
 /// <param name="entities">List of entities to delete in the storage</param>
-public class StorageDelete(IEnumerable<IEntity> entities) : StorageOperation(entities);
+public class StorageDelete(IEnumerable<object> entities) : StorageOperation(entities);
 
 

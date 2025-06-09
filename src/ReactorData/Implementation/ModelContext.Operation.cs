@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Security.Cryptography;
 using System.Xml.Linq;
 
 namespace ReactorData.Implementation;
@@ -18,7 +19,7 @@ partial class ModelContext
         
     }
 
-    record OperationAdd(IEnumerable<IEntity> Entities) : OperationPending
+    record OperationAdd<T>(IEnumerable<T> Entities) : OperationPending where T : class, IEntity
     {
         internal override ValueTask Do(ModelContext context)
         {
@@ -42,7 +43,7 @@ partial class ModelContext
         }
     }
 
-    record OperationUpdate(IEntity OldEntity, IEntity NewEntity) : OperationPending
+    record OperationUpdate<T>(T OldEntity, T NewEntity) : OperationPending where T : class, IEntity
     {
         internal override ValueTask Do(ModelContext context)
         {
@@ -77,7 +78,7 @@ partial class ModelContext
                 context._entityStatus[NewEntity] = EntityStatus.Added;
 
 #if DEBUG
-                if (!context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
+                if (!context._operationQueue.Any(_ => Equals(((IEntity)_.Entity).GetKey(), NewEntity.GetKey())))
                 {
                     System.Diagnostics.Debug.Assert(false);
                 }
@@ -92,7 +93,7 @@ partial class ModelContext
                 context._entityStatus[NewEntity] = EntityStatus.Updated;
 
 #if DEBUG
-                if (!context._operationQueue.Any(_ => Equals(_.Entity.GetKey(), NewEntity.GetKey())))
+                if (!context._operationQueue.Any(_ => Equals(((IEntity)_.Entity).GetKey(), NewEntity.GetKey())))
                 {
                     System.Diagnostics.Debug.Assert(false);
                 }
@@ -106,7 +107,7 @@ partial class ModelContext
         }
     }
 
-    record OperationDelete(IEnumerable<IEntity> Entities) : OperationPending
+    record OperationDelete<T>(IEnumerable<T> Entities) : OperationPending where T : class, IEntity
     {
         internal override ValueTask Do(ModelContext context)
         {
@@ -261,7 +262,7 @@ partial class ModelContext
 
             foreach (var (Entity, _) in context._operationQueue)
             {
-                changedEntities.Add(Entity);
+                changedEntities.Add((IEntity)Entity);
 
                 var entityType = Entity.GetType();
                 queryTypesToNofity.Add(entityType);
@@ -296,14 +297,15 @@ partial class ModelContext
                     var operationsAddedForEachType = new Dictionary<Type, HashSet<object>>();
                     foreach (var (Entity, Status) in context._operationQueue)
                     {
-                        var currentEntityStatus = context.GetEntityStatus(Entity);
+                        var entity = (IEntity)Entity;
+                        var currentEntityStatus = context.GetEntityStatus(entity);
 
                         if (currentEntityStatus != Status)
                         {
                             continue;
                         }
 
-                        var key = Entity.GetKey();
+                        var key = entity.GetKey();
                         var entityType = Entity.GetType();
 
                         if (key != null)
@@ -346,7 +348,8 @@ partial class ModelContext
                 HashSet<Type> queryTypesToNofity = [];
                 foreach (var (Entity, Status) in context._operationQueue)
                 {
-                    var currentEntityStatus = context.GetEntityStatus(Entity);
+                    var entity = (IEntity)Entity;
+                    var currentEntityStatus = context.GetEntityStatus(entity);
 
                     if (currentEntityStatus != Status)
                     {
@@ -359,7 +362,7 @@ partial class ModelContext
                             {
                                 var entityType = Entity.GetType();
                                 var set = context._sets.GetOrAdd(entityType, []);
-                                set[Entity.GetKey().EnsureNotNull()] = Entity;
+                                set[entity.GetKey().EnsureNotNull()] = entity;
 
                                 queryTypesToNofity.Add(entityType);
                             }
@@ -368,7 +371,7 @@ partial class ModelContext
                             {
                                 var entityType = Entity.GetType();
                                 var set = context._sets.GetOrAdd(entityType, []);
-                                set[Entity.GetKey().EnsureNotNull()] = Entity;
+                                set[entity.GetKey().EnsureNotNull()] = entity;
 
                                 queryTypesToNofity.Add(entityType);
                             }
@@ -376,7 +379,7 @@ partial class ModelContext
                         case EntityStatus.Deleted:
                             {
                                 var set = context._sets.GetOrAdd(Entity.GetType(), []);
-                                set.TryRemove(Entity.GetKey().EnsureNotNull(), out var _);
+                                set.TryRemove(entity.GetKey().EnsureNotNull(), out var _);
 
                                 queryTypesToNofity.Add(Entity.GetType());
                             }

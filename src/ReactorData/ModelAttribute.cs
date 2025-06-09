@@ -9,9 +9,11 @@ namespace ReactorData;
 public class ModelAttribute : Attribute
 {
     public string? KeyPropertyName { get; }
+    public string? SharedTypeEntityKey { get; }
 
-    public ModelAttribute(string? keyPropertyName = null)
+    public ModelAttribute(string? keyPropertyName = null, string? sharedTypeEntityKey = null)
     {
         KeyPropertyName = keyPropertyName;
+        SharedTypeEntityKey = sharedTypeEntityKey;
     }
 }

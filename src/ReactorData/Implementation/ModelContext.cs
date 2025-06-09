@@ -17,7 +17,7 @@ partial class ModelContext : IModelContext
 {
     private readonly ConcurrentDictionary<Type, ConcurrentDictionary<object, IEntity>> _sets = [];
 
-    private readonly Queue<(IEntity Entity, EntityStatus Status)> _operationQueue = [];
+    private readonly Queue<(object Entity, EntityStatus Status)> _operationQueue = [];
 
     private readonly ConcurrentDictionary<IEntity, EntityStatus> _entityStatus = [];
 
@@ -88,7 +88,8 @@ partial class ModelContext : IModelContext
         {
             try
             {
-                 Dispatcher?.OnError(ex);
+                System.Diagnostics.Debug.WriteLine($"Exception raised in ModelContext: {ex}");
+                Dispatcher?.OnError(ex);
             }
             catch { }
         }
@@ -99,7 +100,7 @@ partial class ModelContext : IModelContext
         return new ModelContext(_serviceProvider, Options);
     }
 
-    public void Add(params IEntity[] entities)
+    public void Add<T>(params T[] entities) where T : class, IEntity
     {
         if (_logger != null)
         {
@@ -109,10 +110,10 @@ partial class ModelContext : IModelContext
             }
         }
 
-        _operationsBlock.Post(new OperationAdd(entities));
+        _operationsBlock.Post(new OperationAdd<T>(entities));
     }
 
-    public void Replace(IEntity oldEntity, IEntity newEntity)
+    public void Replace<T>(T oldEntity, T newEntity) where T : class, IEntity
     {
         if (_logger != null)
         {
@@ -126,10 +127,10 @@ partial class ModelContext : IModelContext
             }
         }
 
-        _operationsBlock.Post(new OperationUpdate(oldEntity, newEntity));
+        _operationsBlock.Post(new OperationUpdate<T>(oldEntity, newEntity));
     }
 
-    public void Delete(params IEntity[] entities)
+    public void Delete<T>(params T[] entities) where T : class, IEntity
     {
         if (_logger != null)
         {
@@ -139,7 +140,7 @@ partial class ModelContext : IModelContext
             }
         }
 
-        _operationsBlock.Post(new OperationDelete(entities));
+        _operationsBlock.Post(new OperationDelete<T>(entities));
     }
 
     public void Load<T>(

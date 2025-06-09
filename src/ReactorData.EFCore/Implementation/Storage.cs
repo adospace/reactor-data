@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SQLitePCL;
@@ -64,7 +65,9 @@ class Storage<T> : IStorage where T : DbContext
     {
         using var serviceScope = _serviceProvider.CreateScope();
         using var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
+        dbContext.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
         dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
+        dbContext.ChangeTracker.LazyLoadingEnabled = false;
 
         await Initialize(dbContext);
 
@@ -91,8 +94,11 @@ class Storage<T> : IStorage where T : DbContext
 
         try
         {
+            _semaphore.Wait();
+
             using var serviceScope = _serviceProvider.CreateScope();
             using var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
+            dbContext.ChangeTracker.Clear();
             dbContext.ChangeTracker.AutoDetectChangesEnabled = false;
             dbContext.ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
             dbContext.ChangeTracker.LazyLoadingEnabled = false;
@@ -105,23 +111,39 @@ class Storage<T> : IStorage where T : DbContext
             {
                 foreach (var entity in operation.Entities)
                 {
-                    dbContext.Attach(entity);
+                    var entry = dbContext.Entry(entity);
 
-                    switch (operation)
+                    entry.State = operation switch
                     {
-                        case StorageAdd storageInsert:
-                            dbContext.Entry(entity).State = EntityState.Added;
-                            _logger?.LogTrace("Insert entity {EntityId} ({EntityType})", entity.GetKey(), entity.GetType());
-                            break;
-                        case StorageUpdate storageUpdate:
-                            dbContext.Entry(entity).State = EntityState.Modified;
-                            _logger?.LogTrace("Update entity {EntityId} ({EntityType})", entity.GetKey(), entity.GetType());
-                            break;
-                        case StorageDelete storageDelete:
-                            dbContext.Entry(entity).State = EntityState.Deleted;
-                            _logger?.LogTrace("Delete entity {EntityId} ({EntityType})", entity.GetKey(), entity.GetType());
-                            break;
+                        StorageAdd => EntityState.Added,
+                        StorageUpdate => EntityState.Modified,
+                        StorageDelete => EntityState.Deleted,
+                        _ => EntityState.Unchanged
+                    };
+
+                    // Mark navigation properties as unchanged to prevent tracking
+                    foreach (var navigation in entry.Navigations)
+                    {
+                        navigation.IsModified = false;
                     }
+
+                    //dbContext.Attach(entity);
+
+                    //switch (operation)
+                    //{
+                    //    case StorageAdd storageInsert:
+                    //        dbContext.Entry(entity).State = EntityState.Added;
+                    //        _logger?.LogTrace("Insert entity {EntityId} ({EntityType})", ((IEntity)entity).GetKey(), entity.GetType());
+                    //        break;
+                    //    case StorageUpdate storageUpdate:
+                    //        dbContext.Entry(entity).State = EntityState.Modified;
+                    //        _logger?.LogTrace("Update entity {EntityId} ({EntityType})", ((IEntity)entity).GetKey(), entity.GetType());
+                    //        break;
+                    //    case StorageDelete storageDelete:
+                    //        dbContext.Entry(entity).State = EntityState.Deleted;
+                    //        _logger?.LogTrace("Delete entity {EntityId} ({EntityType})", ((IEntity)entity).GetKey(), entity.GetType());
+                    //        break;
+                    //}
                 }
             }
 
@@ -134,5 +156,10 @@ class Storage<T> : IStorage where T : DbContext
             _logger?.LogError(ex, "Saving changes to context resulted in an unhandled exception ({Operations})", System.Text.Json.JsonSerializer.Serialize(operations));
             throw;
         }
+        finally
+        {
+            _semaphore.Release();
+        }
+
     }
 }

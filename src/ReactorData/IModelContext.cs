@@ -18,7 +18,7 @@ public interface IModelContext
     /// </summary>
     /// <param name="entities">Entities to add</param>
     /// <remarks>Entities are marked with <see cref="EntityStatus.Added"/>. To persist any change you have to call <see cref="Save"/></remarks>
-    void Add(params IEntity[] entities);
+    void Add<T>(params T[] entities) where T : class, IEntity;
 
     /// <summary>
     /// Replaces one entity in to the context
@@ -26,14 +26,14 @@ public interface IModelContext
     /// <param name="oldEntity">Old entity to replace</param>
     /// <param name="newEntity">New entity to put in the container</param>    
     /// <remarks>Old entity is marked as <see cref="EntityStatus.Detached"/> while new entity is put in the container with status <see cref="EntityStatus.Updated"/>. To persist any change you have to call <see cref="Save"/></remarks>
-    void Replace(IEntity oldEntity, IEntity newEntity);
+    void Replace<T>(T oldEntity, T newEntity) where T : class, IEntity;
 
     /// <summary>
     /// Delete one or more entities
     /// </summary>
     /// <param name="entities">Entities to delete</param>
     /// <remarks>Entities are marked with <see cref="EntityStatus.Deleted"/> only when not already in the <see cref="EntityStatus.Added"/> status. To persist any change you have to call <see cref="Save"/></remarks>
-    void Delete(params IEntity[] entities);
+    void Delete<T>(params T[] entities) where T : class, IEntity;
 
     /// <summary>
     /// Save any pending changes in a background thread. After the save is applied pending entities will have the <see cref="EntityStatus.Attached"/> status
