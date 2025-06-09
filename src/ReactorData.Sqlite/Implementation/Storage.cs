@@ -194,7 +194,7 @@ class Storage : IStorage
                     {
                         foreach (var entity in storageInsert.Entities)
                         {
-                            await Insert(command, entity);
+                            await Insert(command, (IEntity)entity);
                         }
                     }
                     break;
@@ -202,7 +202,7 @@ class Storage : IStorage
                     {
                         foreach (var entity in storageUpdate.Entities)
                         {
-                            await Update(command, entity);
+                            await Update(command, (IEntity)entity);
                         }
                     }
                     break;
@@ -210,7 +210,7 @@ class Storage : IStorage
                     {
                         foreach (var entity in storageDelete.Entities)
                         {
-                            await Delete(command, entity);
+                            await Delete(command, (IEntity)entity);
                         }
                     }
                     break;
