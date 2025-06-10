@@ -94,8 +94,6 @@ class Storage<T> : IStorage where T : DbContext
 
         try
         {
-            _semaphore.Wait();
-
             using var serviceScope = _serviceProvider.CreateScope();
             using var dbContext = serviceScope.ServiceProvider.GetRequiredService<T>();
             dbContext.ChangeTracker.Clear();
@@ -156,10 +154,5 @@ class Storage<T> : IStorage where T : DbContext
             _logger?.LogError(ex, "Saving changes to context resulted in an unhandled exception ({Operations})", System.Text.Json.JsonSerializer.Serialize(operations));
             throw;
         }
-        finally
-        {
-            _semaphore.Release();
-        }
-
     }
 }
