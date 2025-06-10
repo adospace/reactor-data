@@ -28,8 +28,6 @@ partial class ModelContext : IModelContext
     private readonly ConcurrentDictionary<Type, List<WeakReference<IObservableQuery>>> _queries = [];
 
     private readonly SemaphoreSlim _notificationSemaphore = new(1);
-    
-    //private readonly ModelContext? _owner;
 
     private readonly ILogger<ModelContext>? _logger;
 

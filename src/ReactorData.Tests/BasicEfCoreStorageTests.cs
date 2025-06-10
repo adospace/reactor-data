@@ -93,12 +93,11 @@ class BasicEfCoreStorageTests
         _container.GetEntityStatus(movie).Should().Be(EntityStatus.Detached);
 
         _container.Add(movie);
+        _container.Add(director);
 
         await _container.Flush();
 
         _container.GetEntityStatus(movie).Should().Be(EntityStatus.Added);
-
-        //_container.Set<Movie>().Single().Should().BeSameAs(movie);
 
         _container.Save();
 
