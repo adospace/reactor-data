@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -120,7 +121,7 @@ class Storage<T> : IStorage where T : DbContext
                     };
 
                     // Mark navigation properties as unchanged to prevent tracking
-                    foreach (var navigation in entry.Navigations)
+                    foreach (var navigation in entry.Navigations.OfType<CollectionEntry>())
                     {
                         navigation.IsModified = false;
                     }
