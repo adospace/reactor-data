@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SQLitePCL;
 using System;
 using System.Collections.Generic;
@@ -10,6 +11,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace ReactorData.EFCore.Implementation;
@@ -21,6 +23,11 @@ class Storage<T> : IStorage where T : DbContext
     private readonly ILogger<Storage<T>>? _logger;
     private readonly SemaphoreSlim _semaphore = new(1);
     private bool _initialized;
+
+    private static readonly JsonSerializerOptions _cachedJsonSerializerOptions = new()
+    {
+        ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles
+    };
 
     public Storage(IServiceProvider serviceProvider)
     {
@@ -152,7 +159,7 @@ class Storage<T> : IStorage where T : DbContext
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Saving changes to context resulted in an unhandled exception ({Operations})", System.Text.Json.JsonSerializer.Serialize(operations));
+            _logger?.LogError(ex, "Saving changes to context resulted in an unhandled exception ({Operations})", JsonSerializer.Serialize(operations, _cachedJsonSerializerOptions));
             throw;
         }
     }
