@@ -26,7 +26,7 @@ jobs:
     - name: Install .NET Core
       uses: actions/setup-dotnet@v3
       with:
-        dotnet-version: 8.0.100
+        dotnet-version: 9.0.306
 
     - name: Install MAUI workload
       run: dotnet workload install maui
