@@ -11,7 +11,7 @@ namespace ReactorData.Tests;
 
 class QuerySqliteStorageTests
 {
-    IServiceProvider _services;
+    ServiceProvider _services;
     IModelContext _container;
     private SqliteConnection _connection;
 
@@ -31,10 +31,12 @@ class QuerySqliteStorageTests
     }
 
 
+
     [TearDown]
     public void TearDown()
     {
         _connection.Dispose();
+        _services.Dispose();
     }
 
     [Test]

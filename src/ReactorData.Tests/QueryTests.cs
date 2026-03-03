@@ -7,7 +7,7 @@ namespace ReactorData.Tests;
 
 class QueryTests
 {
-    IServiceProvider _services;
+    ServiceProvider _services;
     IModelContext _container;
 
     [SetUp]
@@ -17,6 +17,12 @@ class QueryTests
         serviceCollection.AddReactorData();
         _services = serviceCollection.BuildServiceProvider();
         _container = _services.GetRequiredService<IModelContext>();
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        _services.Dispose();
     }
 
     [Test]

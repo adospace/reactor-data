@@ -8,7 +8,7 @@ namespace ReactorData.Tests;
 
 class BasicSqliteStorageTests
 {
-    IServiceProvider _services;
+    ServiceProvider _services;
     IModelContext _container;
     private SqliteConnection _connection;
 
@@ -32,6 +32,7 @@ class BasicSqliteStorageTests
     public void TearDown()
     {
         _connection.Dispose();
+        _services.Dispose();
     }
 
     [Test]

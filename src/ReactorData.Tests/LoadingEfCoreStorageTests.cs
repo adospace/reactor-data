@@ -10,7 +10,7 @@ namespace ReactorData.Tests;
 
 class LoadingEfCoreStorageTests
 {
-    IServiceProvider _services;
+    ServiceProvider _services;
     IModelContext _container;
     SqliteConnection _connection;
 
@@ -32,6 +32,7 @@ class LoadingEfCoreStorageTests
     public void TearDown()
     {
         _connection.Dispose();
+        _services.Dispose();
     }
 
     [Test]

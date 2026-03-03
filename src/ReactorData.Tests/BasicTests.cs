@@ -7,7 +7,7 @@ namespace ReactorData.Tests;
 
 public class BasicTests
 {
-    IServiceProvider _services;
+    ServiceProvider _services;
     IModelContext _container;
 
     [SetUp]
@@ -19,6 +19,15 @@ public class BasicTests
 
         _container = _services.GetRequiredService<IModelContext>();
     }
+
+
+
+    [TearDown]
+    public void TearDown()
+    {
+        _services.Dispose();
+    }
+
 
 
     [Test]

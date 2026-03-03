@@ -10,7 +10,7 @@ namespace ReactorData.Tests;
 
 class QueryEfCoreStorageTests
 {
-    IServiceProvider _services;
+    ServiceProvider _services;
     IModelContext _container;
     SqliteConnection _connection;
 
@@ -26,6 +26,13 @@ class QueryEfCoreStorageTests
 
         _services = serviceCollection.BuildServiceProvider();
         _container = _services.GetRequiredService<IModelContext>();
+    }
+
+    [TearDown]
+    public void TearDown()
+    {
+        _connection.Dispose();
+        _services.Dispose();
     }
 
     [Test]
